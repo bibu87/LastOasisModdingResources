@@ -18,7 +18,7 @@ A curated index of resources for modding [Last Oasis](https://store.steampowered
 
 ## Video Tutorials
 
-- [Last Oasis ModKit Tutorial — Creating a Walker](https://www.youtube.com/watch?v=4An9xyeI5Lc) — crash course on building a custom walker in the Modkit / UE5
+- [Last Oasis ModKit Tutorial — Creating a Walker](https://www.youtube.com/watch?v=4An9xyeI5Lc) — crash course on building a custom walker in the Modkit (note: the video calls it UE5; the Modkit is actually UE 4.25.4)
 - [Last Oasis Modkit Guide — How to Download & Basic Tips](https://www.youtube.com/watch?v=ul0IOHPTYxw)
 - [How to Play the Last Oasis Modded Branch](https://www.youtube.com/watch?v=3QYgWBzYzXI) — joining `SDKTest` modded servers
 - [Tutorial: How to create a server with mods on Linux](https://m.youtube.com/watch?v=4J5es7emLyc) — server-side mod setup
@@ -82,6 +82,11 @@ Copy downloaded content from `C:\Steam\LastOSDK\steamapps\workshop\content\90395
 ├── data/                                  # Extracted reference data from the Modkit
 │   ├── LastOasis_APIs.json
 │   └── widget_bp_functions.txt
+├── llm/                                   # AI assistants & prompts for Modkit help
+│   ├── claude/
+│   │   └── claude-skill.zip               # Claude Skill bundle (SKILL.md + .skill file)
+│   └── others/
+│       └── last-oasis-modkit-system-prompt.zip   # Standalone system prompt for ChatGPT / any LLM
 └── scripts/
     └── modkit/                            # Editor-side Python scripts (run inside the Modkit's UE 4.25 editor)
         ├── Python code to extract BPs and functions from the Modkit.py
@@ -99,3 +104,10 @@ These run inside the Last Oasis Modkit editor (Window → Developer Tools → Ou
 
 - [Python code to extract BPs and functions from the Modkit.py](scripts/modkit/Python%20code%20to%20extract%20BPs%20and%20functions%20from%20the%20Modkit.py) — produces `LastOasis_APIs.json`. Iterates every Blueprint asset under `/Game/`, loads its generated class, and dumps the CDO's exposed members. Filters out private (`_`) and stock K2 (`k2_`) entries.
 - [Python_Code_export_widget_bps.py](scripts/modkit/Python_Code_export_widget_bps.py) — produces `widget_bp_functions.txt`. Same idea, scoped to `WidgetBlueprint` assets, and subtracts the `unreal.UserWidget` baseline so the listing only shows widget-specific callables.
+
+### [llm/](llm/)
+
+Drop-in prompts so you can spin up an AI assistant that already knows the Last Oasis Modkit (UE 4.25.4, `Mist` project, SDKTest branch, MyRealm, EAC quirks, etc.). Both bundles are snapshots from April 2026 — the Modkit moves quickly, so they tell users to verify volatile claims against the official Discord.
+
+- [llm/claude/claude-skill.zip](llm/claude/claude-skill.zip) — **Claude Skill** bundle. Unzip to get `SKILL.md` (the skill instructions, with frontmatter triggers covering Modkit / SDKTest / Mist / Workshop / MyRealm / Blueprint API questions) and `last-oasis-modkit.skill` (the packaged skill file). Install in Claude Code or Claude Desktop and it auto-triggers on Last Oasis modding mentions, branching into four workflows: onboarding, reference Q&A, project coaching, and troubleshooting.
+- [llm/others/last-oasis-modkit-system-prompt.zip](llm/others/last-oasis-modkit-system-prompt.zip) — **Generic system prompt** as a single Markdown file. Same domain knowledge as the Claude skill but in a portable form: paste it into a ChatGPT custom GPT's "Instructions," a Claude Project's custom instructions, the OpenAI Playground `system` message, or any other LLM that accepts a system prompt. The file's header explains each integration path.
