@@ -43,15 +43,6 @@ To host or join a modded server: switch to the **`SDKTest`** Steam branch (right
 - [IONOS — Create a Last Oasis private server](https://www.ionos.com/digitalguide/server/know-how/create-last-oasis-private-server/)
 - [Official — Dedicated Server Installation](https://lastoasis.zendesk.com/hc/en-us/articles/360043917851-Last-Oasis-Dedicated-Server-Server-Installation)
 
-## Wikis & Reference
-
-- [Last Oasis Fandom Wiki](https://lastoasis.fandom.com/wiki/Last_Oasis_Wiki) — game data, modules, walkers
-- [Modules — Fandom Wiki](https://lastoasis.fandom.com/wiki/Modules)
-- [Dedicated Server — Fandom Wiki](https://lastoasis.fandom.com/wiki/Last_Oasis_Dedicated_Server)
-- [Donkey Crew — Fandom Wiki](https://lastoasis.fandom.com/wiki/Donkey_Crew)
-- [PCGamingWiki — Last Oasis](https://www.pcgamingwiki.com/wiki/Last_Oasis)
-- [SteamDB — Last Oasis](https://steamdb.info/app/903950/) · [Modkit 2.0 / Moving Forward patch notes](https://steamdb.info/patchnotes/14480222/)
-
 ## Community
 
 - [Official Discord](https://discord.com/invite/lastoasis) — primary modding support venue
