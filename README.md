@@ -95,6 +95,8 @@ Copy downloaded content from `C:\Steam\LastOSDK\steamapps\workshop\content\90395
 │   └── others/
 │       └── last-oasis-modkit-system-prompt.zip   # Standalone system prompt for ChatGPT / any LLM
 ├── scripts/
+│   ├── migrate_mod_v2_to_v3.py            # Migrate old-layout mod (Content/Mods/) to v3 (runs OUTSIDE the editor)
+│   ├── recover_mod_from_workshop.py       # Extract Workshop-cached zips under Saved/Mods/ into v3 layout
 │   └── modkit/                            # Editor-side Python scripts (run inside the Modkit's UE 4.25 editor)
 │       ├── Python code to extract BPs and functions from the Modkit.py
 │       ├── Python_Code_export_widget_bps.py
@@ -127,6 +129,14 @@ Community-maintained, expanded variants of the five official Donkey Crew Modkit 
 - [data/LastOasis_APIs.json](data/LastOasis_APIs.json) — every Blueprint in the Modkit, with all of its exposed functions (and other public members) listed for each one. Use it as a searchable reference of the full Blueprint API surface.
 - [data/widget_bp_functions.txt](data/widget_bp_functions.txt) — the same idea, but for Widget Blueprints: every `WidgetBlueprint` in the Modkit and its exposed functions, with the stock `UserWidget` baseline subtracted so only the widget-specific additions remain.
 - [data/RecipeTree.json](data/RecipeTree.json) — every craftable item and placeable in the Modkit, grouped by crafting category (`Base` = 'C' handcraft, `Construction` = 'B' build menu, plus stations like `Smithing`, `Furnace`, `PackageCrafting`, ...). Each entry lists ingredients (item + amount), result amount, XP reward, and the tech-tree node required to unlock it. Produced by [Python_dump_recipes_for_tools.py](scripts/modkit/Python_dump_recipes_for_tools.py); consumed by the viewers in [tools/](tools/).
+
+### [scripts/migrate_mod_v2_to_v3.py](scripts/migrate_mod_v2_to_v3.py)
+
+Standalone Python 3 script that stages an existing v2 mod for the new Modkit by **moving `modinfo.json` from `Content/Mods/<Mod>/` to `Saved/Mods/<Mod>/`** (where the new Modkit's mod-selection screen scans). Assets stay at `Content/Mods/<Mod>/<files>` (the v2 source location, where v2 manifests reference assets from). The actual v2→v3 schema rewrite — and the move of assets into `Saved/Mods/<Mod>/Assets/` — happens **inside the Modkit** when you click **Mod Manager → Save Mod**, which is the only safe way to populate the asset-list fields the Modkit's GC checks against. Defaults to dry-run; with `--apply` it zips a backup of the v2 manifest first. Refuses if Saved-side state already exists (`--force` to override). See [docs/modkit-guides/porting-a-mod-from-old-modkit.md](docs/modkit-guides/porting-a-mod-from-old-modkit.md#automating-with-the-migration-script) for usage, the GC-trap rationale, and the steps you do after (open in Modkit → *Save Mod* → cook → test).
+
+### [scripts/recover_mod_from_workshop.py](scripts/recover_mod_from_workshop.py)
+
+Companion to the migration script for the **other common starting point**: a mod that the Modkit has cached as a Steam Workshop download at `<ModkitRoot>/Game/Saved/Mods/<ModName>/<WORKSHOP_ID>.zip` (alongside its v2 `modinfo.json`). Auto-discovers every recoverable mod under `Saved/Mods/` (or pass `--mod <Name>` for one) and extracts each zip into `Game/Content/` so the assets land at the v2 source location (`Game/Content/Mods/<Mod>/...` and `Game/Content/Mist/...` for any overridden game assets). The v2 manifest at `Saved/Mods/<Mod>/modinfo.json` is **left in place** — that's where the Modkit's mod-selection screen scans, and removing it makes the mod invisible. With this layout the Modkit finds the mod, sees `modKitVersion: 2`, loads the assets from `Content/Mods/<Mod>/`, and you can edit them. From there you either click **Mod Manager → Save Mod** in the Modkit (which migrates to v3 properly with the asset-list fields populated) or run `migrate_mod_v2_to_v3.py` to do the layout move offline. Defaults to dry-run; `--apply` performs the work after creating a backup zip and post-extraction-verifying every file. `--remove-workshop-cache` deletes the now-redundant `.zip`/`.pak`/`.sig` cache files. Zipslip-protected. See [docs/modkit-guides/porting-a-mod-from-old-modkit.md](docs/modkit-guides/porting-a-mod-from-old-modkit.md#automating-recovery-from-workshop-downloads) for usage, both failure modes the script avoids (and why), the script-vs-script decision matrix, and recovery instructions if you ran an earlier broken version of the script.
 
 ### [scripts/modkit/](scripts/modkit/)
 
