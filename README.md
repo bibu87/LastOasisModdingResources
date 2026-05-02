@@ -65,47 +65,13 @@ To host or join a modded server: switch to the **`SDKTest`** Steam branch (right
 └── tools/        # Self-contained offline HTML viewers
 ```
 
-### [`data/`](data/)
+Each folder has its own README with details. The summary below is just a pointer table.
 
-| File | Contents |
-| --- | --- |
-| [`LastOasis_APIs.json`](data/LastOasis_APIs.json) | Every Blueprint in the Modkit with its CDO-exposed members — searchable Blueprint API surface. |
-| [`widget_bp_functions.txt`](data/widget_bp_functions.txt) | Every `WidgetBlueprint` with the stock `UserWidget` baseline subtracted (only widget-specific additions). |
-| [`RecipeTree.json`](data/RecipeTree.json) | Every craftable item & placeable, grouped by crafting category (`Base` = handcraft, `Construction` = build menu, plus stations). Each entry: ingredients, output amount, XP, required tech-tree unlock. Consumed by [`tools/`](tools/). |
-
-### [`docs/`](docs/)
-
-Guides and reference docs not covered by the official Drive material.
-
-- [`docs/modkit-python-scripting.md`](docs/modkit-python-scripting.md) — UE 4.25 Python plugin setup, the four extractor scripts in [`scripts/modkit/`](scripts/modkit/), reflection gotchas (CDOs, `unreal.Map` keys-only iteration, `_C` suffixes), and a "your own extractor" template.
-- [`docs/myrealm-configuration.md`](docs/myrealm-configuration.md) — field-by-field reference for the [MyRealm portal](https://myrealm.lastoasis.gg/): identity, access, hosting mode, events, gameplay tuning (multipliers/claims/combat/decay/economy/PvP), the `Mods=` field, end-to-end checklist for a new modded realm.
-- [`docs/modkit-guides/`](docs/modkit-guides/) — expanded community variants of the [five official Donkey Crew Modkit guides](https://drive.google.com/drive/folders/1QqS5Z32g07FLpTja2g6oCUJ3YeJnqND1) (mod authoring, hosting, custom maps, mod references, v2→v3 porting). [Index](docs/modkit-guides/README.md).
-
-### [`scripts/`](scripts/)
-
-Standalone Python 3 scripts that run **on the host** (not inside the Modkit's editor). Both default to dry-run and produce a backup zip before any change.
-
-- [`scripts/migrate_mod_v2_to_v3.py`](scripts/migrate_mod_v2_to_v3.py) — stage an existing v2 mod (assets at `Content/Mods/<Mod>/`) for the new Modkit.
-- [`scripts/recover_mod_from_workshop.py`](scripts/recover_mod_from_workshop.py) — recover a Workshop-cached mod (zip at `Saved/Mods/<Mod>/<ID>.zip`) into editable form.
-
-Quick reference: [`scripts/README.md`](scripts/README.md). Full guide and GC-trap rationale: [`docs/modkit-guides/porting-a-mod-from-old-modkit.md`](docs/modkit-guides/porting-a-mod-from-old-modkit.md).
-
-### [`scripts/modkit/`](scripts/modkit/)
-
-Editor-side Python that walks the Modkit's Asset Registry and dumps Blueprint / Widget / Recipe data — the source of the JSON in [`data/`](data/). Run inside the editor via **Output Log → Cmd → `py "<path>"`**.
-
-Quick reference (per-script knobs, output paths, gotchas): [`scripts/modkit/README.md`](scripts/modkit/README.md). Full setup, three ways to run, and a minimal extractor template: [`docs/modkit-python-scripting.md`](docs/modkit-python-scripting.md).
-
-### [`tools/`](tools/)
-
-Self-contained HTML pages — open directly in a browser, no server, no build step. Each loads a sibling `RecipeTree.json` (or any matching JSON via the in-page file picker).
-
-- [`tools/recipe_viewer.html`](tools/recipe_viewer.html) — searchable, category-grouped recipe browser.
-- [`tools/recipe_bubbles.html`](tools/recipe_bubbles.html) — interactive bubble/graph view of the recipe tree.
-
-### [`llm/`](llm/)
-
-Drop-in prompts that pre-load an AI assistant with Last Oasis Modkit knowledge (UE 4.25.4, `Mist`, `SDKTest`, MyRealm, EAC quirks). Snapshots from April 2026 — both prompts tell the LLM to verify volatile claims against the official Discord.
-
-- [`llm/claude/claude-skill.zip`](llm/claude/claude-skill.zip) — **Claude Skill** bundle (`SKILL.md` + `.skill`). Auto-triggers on LO modding mentions in Claude Code or Claude Desktop.
-- [`llm/others/last-oasis-modkit-system-prompt.zip`](llm/others/last-oasis-modkit-system-prompt.zip) — portable system prompt. Paste into a ChatGPT custom GPT, a Claude Project, the OpenAI Playground, or any LLM that accepts a system prompt.
+| Folder | What's there | Details |
+| --- | --- | --- |
+| [`data/`](data/) | Extracted JSON dumps of the Modkit's Blueprints, Widgets, and recipes. | [`data/README.md`](data/README.md) |
+| [`docs/`](docs/) | Modkit Python scripting guide, MyRealm configuration reference, plus expanded variants of the five official Donkey Crew guides under [`docs/modkit-guides/`](docs/modkit-guides/). | [`docs/README.md`](docs/README.md) |
+| [`scripts/`](scripts/) | Host-side Python scripts: stage a v2 mod for the new Modkit, recover a Workshop-cached mod into editable form. Both default to dry-run. | [`scripts/README.md`](scripts/README.md) |
+| [`scripts/modkit/`](scripts/modkit/) | Editor-side Python that runs inside the Modkit's UE 4.25 editor — walks the Asset Registry to produce the dumps in [`data/`](data/). | [`scripts/modkit/README.md`](scripts/modkit/README.md) |
+| [`tools/`](tools/) | Self-contained offline HTML viewers for the recipe data. Open in any browser, no build step. | [`tools/README.md`](tools/README.md) |
+| [`llm/`](llm/) | Drop-in prompts that pre-load an AI assistant with Modkit knowledge. Claude Skill bundle and a portable system prompt for any other LLM. | [`llm/README.md`](llm/README.md) |
