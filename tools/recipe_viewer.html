@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Last Oasis Recipe Tree</title>
+<style>
+:root {
+  --bg: #15171c;
+  --panel: #1d2027;
+  --panel-2: #262a33;
+  --border: #2f3540;
+  --text: #d8dde6;
+  --muted: #8b94a3;
+  --accent: #e0a458;
+  --accent-2: #6fb0e0;
+  --base: #5fbf6a;
+  --build: #d97a5f;
+  --missing: #d05858;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+}
+header {
+  display: flex; align-items: center; gap: 16px;
+  padding: 10px 16px; background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 10;
+}
+header h1 {
+  margin: 0; font-size: 15px; font-weight: 600; color: var(--accent);
+}
+header .totals { color: var(--muted); font-size: 12px; }
+header input[type=text] {
+  flex: 1; max-width: 420px;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 6px 10px; font: inherit; outline: none;
+}
+header input[type=text]:focus { border-color: var(--accent-2); }
+header label.file {
+  background: var(--panel-2); border: 1px solid var(--border);
+  padding: 6px 10px; border-radius: 4px; cursor: pointer;
+}
+header label.file:hover { border-color: var(--accent-2); }
+header label.file input { display: none; }
+header select {
+  background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 6px 8px; font: inherit;
+}
+header button.clear {
+  background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--text); padding: 6px 10px; border-radius: 4px;
+  cursor: pointer; font: inherit;
+}
+header button.clear:hover { border-color: var(--accent-2); }
+
+main { display: flex; min-height: calc(100vh - 49px); }
+aside {
+  width: 260px; background: var(--panel);
+  border-right: 1px solid var(--border);
+  overflow-y: auto; max-height: calc(100vh - 49px);
+  position: sticky; top: 49px;
+  flex-shrink: 0;
+}
+aside .nav-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 14px; cursor: pointer; border-left: 2px solid transparent;
+  font-size: 12px;
+}
+aside .nav-item:hover { background: var(--panel-2); }
+aside .nav-item.special-base   { color: var(--base); }
+aside .nav-item.special-build  { color: var(--build); }
+aside .nav-item .count { color: var(--muted); font-size: 11px; }
+aside .nav-item.dim { opacity: 0.35; }
+
+section.content { flex: 1; padding: 16px 24px; overflow-x: hidden; }
+.empty {
+  display: flex; align-items: center; justify-content: center;
+  height: 100%; color: var(--muted);
+  border: 2px dashed var(--border); border-radius: 8px;
+  text-align: center; padding: 32px;
+}
+.empty.drag-over { border-color: var(--accent); color: var(--accent); }
+
+.category {
+  margin-bottom: 28px; scroll-margin-top: 64px;
+}
+.category h2 {
+  margin: 0 0 6px 0; font-size: 16px; font-weight: 600;
+  display: flex; align-items: baseline; gap: 10px;
+  border-bottom: 1px solid var(--border); padding-bottom: 6px;
+}
+.category h2 .count { color: var(--muted); font-size: 12px; font-weight: normal; }
+.category h2 .menu-tag {
+  font-size: 11px; padding: 2px 6px; border-radius: 3px;
+  font-weight: 600; letter-spacing: 0.05em;
+}
+.menu-tag.base  { background: rgba(95,191,106,0.18); color: var(--base);  }
+.menu-tag.build { background: rgba(217,122,95,0.18); color: var(--build); }
+
+.recipes {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 8px;
+}
+.recipe {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 6px; padding: 8px 12px;
+}
+.recipe.hidden { display: none; }
+.recipe.match-hit { border-color: var(--accent); }
+.recipe header.r-head {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+  background: none; border: 0; padding: 0; position: static;
+  margin-bottom: 4px;
+}
+.recipe .r-name { font-weight: 600; }
+.recipe .r-qty  { color: var(--accent); font-weight: 600; }
+.recipe .r-meta { color: var(--muted); font-size: 11px; }
+.recipe .r-meta .schematic { color: var(--accent-2); }
+.recipe ul.ings {
+  list-style: none; padding: 0; margin: 4px 0 0 0;
+  font-size: 12px;
+}
+.recipe ul.ings li { padding: 1px 0; color: var(--text); }
+.recipe ul.ings .item {
+  cursor: pointer; border-bottom: 1px dotted transparent;
+}
+.recipe ul.ings .item:hover { border-bottom-color: var(--accent-2); color: var(--accent-2); }
+.recipe ul.ings .amt { color: var(--accent); }
+.recipe ul.ings .missing { color: var(--missing); font-style: italic; }
+.recipe .uses-note {
+  margin-top: 4px; font-size: 11px; color: var(--muted);
+}
+.recipe .uses-note a {
+  color: var(--accent-2); cursor: pointer; text-decoration: none;
+  margin-right: 6px;
+}
+.recipe .uses-note a:hover { text-decoration: underline; }
+
+mark { background: rgba(224,164,88,0.35); color: inherit; padding: 0 1px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Last Oasis Recipe Tree</h1>
+  <input type="text" id="search" placeholder="Search recipe name or ingredient&hellip;">
+  <select id="sort">
+    <option value="name">Sort: name</option>
+    <option value="xp">Sort: xp</option>
+    <option value="ingredients">Sort: # ingredients</option>
+  </select>
+  <label class="file">
+    Load RecipeTree.json
+    <input type="file" id="file" accept=".json,application/json">
+  </label>
+  <button class="clear" id="clear" hidden>Clear filter</button>
+  <span class="totals" id="totals"></span>
+</header>
+
+<main>
+  <aside id="sidebar"></aside>
+  <section class="content" id="content">
+    <div class="empty" id="empty">
+      Drop <code>RecipeTree.json</code> here, or click <strong>Load RecipeTree.json</strong>.<br>
+      Default location: <code>%LOCALAPPDATA%\Mist\Saved\RecipeTree.json</code>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const SPECIAL = {
+  Base:         { label: "&#39;C&#39; handcraft menu",         klass: "base"  },
+  Construction: { label: "&#39;B&#39; build menu (placeables)", klass: "build" },
+};
+
+let DATA = null;        // parsed payload
+let GROUPS = {};        // station -> [recipe]
+let ITEM_INDEX = {};    // ingredient name -> [{station, recipeIndex}]
+let CURRENT_FILTER = ""; // text or "uses:Foo"
+
+const $ = id => document.getElementById(id);
+
+// ---------- loading ----------
+
+function load(payload) {
+  DATA = payload;
+  GROUPS = payload.groups || {};
+  buildItemIndex();
+  renderSidebar();
+  renderTotals();
+  renderAll();
+  $("empty").hidden = true;
+  $("content").style.padding = "16px 24px";
+}
+
+function loadFromFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      load(JSON.parse(e.target.result));
+    } catch (err) {
+      alert("Failed to parse JSON: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+$("file").addEventListener("change", e => {
+  if (e.target.files[0]) loadFromFile(e.target.files[0]);
+});
+
+const empty = $("empty");
+["dragenter","dragover"].forEach(ev =>
+  document.addEventListener(ev, e => { e.preventDefault(); empty.classList.add("drag-over"); }));
+["dragleave","drop"].forEach(ev =>
+  document.addEventListener(ev, e => { e.preventDefault(); empty.classList.remove("drag-over"); }));
+document.addEventListener("drop", e => {
+  if (e.dataTransfer.files[0]) loadFromFile(e.dataTransfer.files[0]);
+});
+
+// ---------- indexing ----------
+
+function buildItemIndex() {
+  ITEM_INDEX = {};
+  for (const station of Object.keys(GROUPS)) {
+    GROUPS[station].forEach((recipe, i) => {
+      for (const ing of recipe.ingredients || []) {
+        const key = ing.item || "<missing>";
+        (ITEM_INDEX[key] = ITEM_INDEX[key] || []).push({ station, index: i });
+      }
+    });
+  }
+}
+
+// recipes whose result name matches a given item (so clicking an ingredient
+// can show "where do I make this?")
+function recipesProducing(itemName) {
+  const out = [];
+  for (const station of Object.keys(GROUPS)) {
+    GROUPS[station].forEach((r, i) => {
+      if ((r.result || "").toLowerCase() === itemName.toLowerCase() ||
+          (r.result_id || "").toLowerCase() === itemName.toLowerCase()) {
+        out.push({ station, index: i, recipe: r });
+      }
+    });
+  }
+  return out;
+}
+
+// ---------- rendering ----------
+
+function escapeHTML(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+function highlight(text, q) {
+  if (!q) return escapeHTML(text);
+  const escaped = escapeHTML(text);
+  const re = new RegExp("(" + q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&") + ")", "gi");
+  return escaped.replace(re, "<mark>$1</mark>");
+}
+
+function orderedStations() {
+  const keys = Object.keys(GROUPS);
+  const ordered = [];
+  for (const s of ["Base","Construction"]) if (keys.includes(s)) ordered.push(s);
+  for (const k of keys.sort()) if (!ordered.includes(k)) ordered.push(k);
+  return ordered;
+}
+
+function renderSidebar() {
+  const aside = $("sidebar");
+  aside.innerHTML = "";
+  for (const station of orderedStations()) {
+    const cnt = GROUPS[station].length;
+    const div = document.createElement("div");
+    div.className = "nav-item";
+    div.dataset.station = station;
+    if (station === "Base")         div.classList.add("special-base");
+    if (station === "Construction") div.classList.add("special-build");
+    div.innerHTML =
+      `<span>${escapeHTML(station)}</span>` +
+      `<span class="count">${cnt}</span>`;
+    div.addEventListener("click", () => {
+      const t = document.getElementById("cat-" + station);
+      if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    aside.appendChild(div);
+  }
+}
+
+function renderTotals() {
+  if (!DATA) { $("totals").textContent = ""; return; }
+  const t = DATA.totals || {};
+  const stations = Object.keys(GROUPS).length;
+  const total = Object.values(GROUPS).reduce((a,b) => a + b.length, 0);
+  $("totals").textContent =
+    `${total} recipes  |  ${stations} stations  |  items ${t.item_recipes||"?"}, placeables ${t.placeable_recipes||"?"}`;
+}
+
+function renderAll() {
+  const root = $("content");
+  root.innerHTML = "";
+  for (const station of orderedStations()) {
+    root.appendChild(renderCategory(station, GROUPS[station]));
+  }
+  applyFilter();
+}
+
+function renderCategory(station, recipes) {
+  const sec = document.createElement("section");
+  sec.className = "category";
+  sec.id = "cat-" + station;
+
+  const tag = SPECIAL[station]
+    ? `<span class="menu-tag ${SPECIAL[station].klass}">${SPECIAL[station].label}</span>`
+    : "";
+
+  const sortMode = $("sort").value;
+  const sorted = recipes.slice();
+  if (sortMode === "name") {
+    sorted.sort((a,b) => (a.result||"").localeCompare(b.result||""));
+  } else if (sortMode === "xp") {
+    sorted.sort((a,b) => (b.experience||0) - (a.experience||0));
+  } else if (sortMode === "ingredients") {
+    sorted.sort((a,b) => (b.ingredients||[]).length - (a.ingredients||[]).length);
+  }
+
+  sec.innerHTML =
+    `<h2>${escapeHTML(station)} <span class="count">${recipes.length} recipes</span> ${tag}</h2>`;
+
+  const grid = document.createElement("div");
+  grid.className = "recipes";
+  for (const r of sorted) grid.appendChild(renderRecipe(r));
+  sec.appendChild(grid);
+  return sec;
+}
+
+function renderRecipe(r) {
+  const card = document.createElement("article");
+  card.className = "recipe";
+  card.dataset.name = (r.result || r.result_id || "").toLowerCase();
+  card.dataset.ingredients = (r.ingredients || [])
+    .map(i => (i.item || "missing").toLowerCase()).join("|");
+
+  const head = document.createElement("header");
+  head.className = "r-head";
+
+  const name = document.createElement("span");
+  name.className = "r-name";
+  name.innerHTML = highlight(r.result || r.result_id || "?", textQuery());
+  head.appendChild(name);
+
+  if (r.result_amount && r.result_amount !== 1) {
+    const qty = document.createElement("span");
+    qty.className = "r-qty";
+    qty.textContent = "x" + r.result_amount;
+    head.appendChild(qty);
+  }
+
+  const meta = document.createElement("span");
+  meta.className = "r-meta";
+  const parts = [];
+  if (r.experience)          parts.push(`xp ${r.experience}`);
+  if (r.required_unlockable) parts.push(`<span class="schematic">${escapeHTML(r.required_unlockable)}</span>`);
+  meta.innerHTML = parts.join(" &nbsp;&middot;&nbsp; ");
+  head.appendChild(meta);
+
+  card.appendChild(head);
+
+  if ((r.ingredients || []).length) {
+    const ul = document.createElement("ul");
+    ul.className = "ings";
+    for (const ing of r.ingredients) {
+      const li = document.createElement("li");
+      const name = ing.item || null;
+      if (!name) {
+        li.innerHTML = `<span class="missing">&lt;missing&gt;</span> <span class="amt">x${ing.amount||1}</span>`;
+      } else {
+        li.innerHTML =
+          `<span class="item" data-item="${escapeHTML(name)}">${highlight(name, textQuery())}</span> ` +
+          `<span class="amt">x${ing.amount||1}</span>`;
+      }
+      ul.appendChild(li);
+    }
+    card.appendChild(ul);
+  }
+
+  // "produced by N other recipes"
+  const sources = recipesProducing(r.result || r.result_id || "");
+  if (sources.length > 1) {
+    const note = document.createElement("div");
+    note.className = "uses-note";
+    note.innerHTML = `<span style="color:var(--muted)">also produced at:</span> ` +
+      sources.filter(s => s.recipe !== r)
+        .map(s => `<a data-jump="cat-${s.station}">${escapeHTML(s.station)}</a>`)
+        .join("");
+    card.appendChild(note);
+  }
+
+  return card;
+}
+
+// ---------- filtering ----------
+
+function textQuery() {
+  if (CURRENT_FILTER.startsWith("uses:")) return "";
+  return CURRENT_FILTER;
+}
+
+function applyFilter() {
+  const q = CURRENT_FILTER.toLowerCase();
+  const usesMode = q.startsWith("uses:");
+  const target   = usesMode ? q.slice(5) : q;
+
+  const stationCounts = {};
+  document.querySelectorAll(".recipe").forEach(card => {
+    let show = true;
+    if (target) {
+      const name = card.dataset.name;
+      const ings = card.dataset.ingredients;
+      if (usesMode) {
+        show = ings.split("|").includes(target);
+      } else {
+        show = name.includes(target) || ings.includes(target);
+      }
+    }
+    card.classList.toggle("hidden", !show);
+    if (show) {
+      const station = card.closest(".category").id.replace(/^cat-/, "");
+      stationCounts[station] = (stationCounts[station] || 0) + 1;
+    }
+  });
+
+  document.querySelectorAll(".category").forEach(sec => {
+    const station = sec.id.replace(/^cat-/, "");
+    sec.style.display = (target && !stationCounts[station]) ? "none" : "";
+  });
+  document.querySelectorAll("aside .nav-item").forEach(item => {
+    const station = item.dataset.station;
+    item.classList.toggle("dim", target && !stationCounts[station]);
+  });
+
+  $("clear").hidden = !CURRENT_FILTER;
+}
+
+$("search").addEventListener("input", e => {
+  CURRENT_FILTER = e.target.value.trim();
+  if (DATA) {
+    // re-render to refresh highlight marks
+    renderAll();
+  }
+});
+
+$("sort").addEventListener("change", () => { if (DATA) renderAll(); });
+
+$("clear").addEventListener("click", () => {
+  CURRENT_FILTER = "";
+  $("search").value = "";
+  if (DATA) renderAll();
+});
+
+// click on an ingredient: filter to "uses:Item"
+document.addEventListener("click", e => {
+  const tgt = e.target.closest(".item[data-item]");
+  if (tgt) {
+    CURRENT_FILTER = "uses:" + tgt.dataset.item;
+    $("search").value = tgt.dataset.item;
+    if (DATA) renderAll();
+    return;
+  }
+  const jmp = e.target.closest("[data-jump]");
+  if (jmp) {
+    const t = document.getElementById(jmp.dataset.jump);
+    if (t) t.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+# Local Claude Code workspace settings
+.claude/
+
+# Local unzipped copy of llm/claude/claude-skill.zip
+llm/claude/extracted/

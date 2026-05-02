@@ -65,9 +65,6 @@ Copy downloaded content from `C:\Steam\LastOSDK\steamapps\workshop\content\90395
 ## Community
 
 - [Official Discord](https://discord.com/invite/lastoasis) — primary modding support venue
-- [Last Oasis Community Discord](https://discord.me/lastoasiscommunity) — trading, LFG, clan perks
-- [DISBOARD — Last Oasis listing](https://disboard.org/server/440538424991154177)
-- [LastOasis.de](https://lastoasis.de) — German-speaking community forum & Discord
 - [Steam Community Hub](https://steamcommunity.com/app/903950)
 
 ## Community Tools & Open Source
@@ -81,22 +78,29 @@ Copy downloaded content from `C:\Steam\LastOSDK\steamapps\workshop\content\90395
 .
 ├── data/                                  # Extracted reference data from the Modkit
 │   ├── LastOasis_APIs.json
+│   ├── RecipeTree.json
 │   └── widget_bp_functions.txt
 ├── llm/                                   # AI assistants & prompts for Modkit help
 │   ├── claude/
 │   │   └── claude-skill.zip               # Claude Skill bundle (SKILL.md + .skill file)
 │   └── others/
 │       └── last-oasis-modkit-system-prompt.zip   # Standalone system prompt for ChatGPT / any LLM
-└── scripts/
-    └── modkit/                            # Editor-side Python scripts (run inside the Modkit's UE 4.25 editor)
-        ├── Python code to extract BPs and functions from the Modkit.py
-        └── Python_Code_export_widget_bps.py
+├── scripts/
+│   └── modkit/                            # Editor-side Python scripts (run inside the Modkit's UE 4.25 editor)
+│       ├── Python code to extract BPs and functions from the Modkit.py
+│       ├── Python_Code_export_widget_bps.py
+│       ├── Python_Extract_Recipes.py
+│       └── Python_dump_recipes_for_tools.py
+└── tools/                                 # Standalone offline HTML viewers (load JSON from data/)
+    ├── recipe_bubbles.html
+    └── recipe_viewer.html
 ```
 
 ### [data/](data/)
 
 - [data/LastOasis_APIs.json](data/LastOasis_APIs.json) — every Blueprint in the Modkit, with all of its exposed functions (and other public members) listed for each one. Use it as a searchable reference of the full Blueprint API surface.
 - [data/widget_bp_functions.txt](data/widget_bp_functions.txt) — the same idea, but for Widget Blueprints: every `WidgetBlueprint` in the Modkit and its exposed functions, with the stock `UserWidget` baseline subtracted so only the widget-specific additions remain.
+- [data/RecipeTree.json](data/RecipeTree.json) — every craftable item and placeable in the Modkit, grouped by crafting category (`Base` = 'C' handcraft, `Construction` = 'B' build menu, plus stations like `Smithing`, `Furnace`, `PackageCrafting`, ...). Each entry lists ingredients (item + amount), result amount, XP reward, and the tech-tree node required to unlock it. Produced by [Python_dump_recipes_for_tools.py](scripts/modkit/Python_dump_recipes_for_tools.py); consumed by the viewers in [tools/](tools/).
 
 ### [scripts/modkit/](scripts/modkit/)
 
@@ -104,6 +108,15 @@ These run inside the Last Oasis Modkit editor (Window → Developer Tools → Ou
 
 - [Python code to extract BPs and functions from the Modkit.py](scripts/modkit/Python%20code%20to%20extract%20BPs%20and%20functions%20from%20the%20Modkit.py) — produces `LastOasis_APIs.json`. Iterates every Blueprint asset under `/Game/`, loads its generated class, and dumps the CDO's exposed members. Filters out private (`_`) and stock K2 (`k2_`) entries.
 - [Python_Code_export_widget_bps.py](scripts/modkit/Python_Code_export_widget_bps.py) — produces `widget_bp_functions.txt`. Same idea, scoped to `WidgetBlueprint` assets, and subtracts the `unreal.UserWidget` baseline so the listing only shows widget-specific callables.
+- [Python_dump_recipes_for_tools.py](scripts/modkit/Python_dump_recipes_for_tools.py) — produces [`RecipeTree.json`](data/RecipeTree.json). Walks `/Game/Mist/Data/Items` (each item's `recipes` array) and `/Game/Mist/Data/Placeables` (each placeable's `requirements` / `full_cost` struct), groups everything by crafting category, and serializes a clean tree designed to feed the HTML viewers. Pretty-prints the tree to the editor's Output Log too.
+- [Python_Extract_Recipes.py](scripts/modkit/Python_Extract_Recipes.py) — alternate, lower-level recipe dumper. Iterates the same data roots but serializes each asset's full CDO (every editor property, recursing through structs / `unreal.Map` / `unreal.Set`) into `<ProjectSaved>/Recipes/recipes.json`. Useful when you need the raw shape of a recipe struct rather than the curated tree above.
+
+### [tools/](tools/)
+
+Self-contained HTML pages — open directly in a browser, no server, no build step. Each one expects a sibling `RecipeTree.json` (or you can load any matching JSON via the file picker in the header).
+
+- [tools/recipe_viewer.html](tools/recipe_viewer.html) — searchable, category-grouped recipe browser. Lists every recipe in the tree with its ingredients, output quantity, XP, and required tech-tree unlockable.
+- [tools/recipe_bubbles.html](tools/recipe_bubbles.html) — interactive bubble / graph view of the recipe tree, useful for spotting ingredient chains and shared base resources at a glance.
 
 ### [llm/](llm/)
 

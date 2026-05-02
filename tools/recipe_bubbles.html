@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Last Oasis Recipe Bubbles</title>
+<style>
+:root {
+  --bg: #15171c;
+  --panel: #1d2027;
+  --panel-2: #262a33;
+  --border: #2f3540;
+  --text: #d8dde6;
+  --muted: #8b94a3;
+  --accent: #e0a458;
+  --accent-2: #6fb0e0;
+}
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--text);
+  overflow: hidden;
+}
+header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 16px; background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  height: 49px;
+}
+header h1 {
+  margin: 0; font-size: 14px; font-weight: 600; color: var(--accent);
+}
+header .totals { color: var(--muted); font-size: 12px; }
+header input[type=text] {
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 5px 8px; font: inherit; outline: none; width: 240px;
+}
+header input[type=text]:focus { border-color: var(--accent-2); }
+header label.file {
+  background: var(--panel-2); border: 1px solid var(--border);
+  padding: 5px 10px; border-radius: 4px; cursor: pointer;
+}
+header label.file:hover { border-color: var(--accent-2); }
+header label.file input { display: none; }
+header .legend { color: var(--muted); font-size: 11px; flex: 1; text-align: right; }
+header .legend kbd {
+  background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 3px; padding: 1px 5px; font: 11px monospace;
+}
+.filter-mode {
+  display: inline-flex; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--panel-2); overflow: hidden;
+}
+.filter-mode input { display: none; }
+.filter-mode label {
+  padding: 5px 12px; font-size: 12px; color: var(--muted);
+  cursor: pointer; user-select: none;
+  border-right: 1px solid var(--border);
+}
+.filter-mode label:last-of-type { border-right: 0; }
+.filter-mode label:hover { color: var(--text); }
+.filter-mode input:checked + label {
+  background: var(--accent); color: #1a1a1a; font-weight: 600;
+}
+
+#stage {
+  position: relative;
+  width: 100vw; height: calc(100vh - 49px);
+}
+.empty {
+  position: absolute; inset: 0; display: flex;
+  align-items: center; justify-content: center; text-align: center;
+  color: var(--muted); padding: 32px;
+  border: 2px dashed var(--border); margin: 24px; border-radius: 8px;
+}
+.empty.drag-over { border-color: var(--accent); color: var(--accent); }
+
+svg { display: block; cursor: pointer; }
+svg .node circle { stroke-width: 0; }
+svg .node.station > circle { stroke: rgba(255,255,255,0.10); stroke-width: 1px; }
+svg .node.root > circle    { stroke: rgba(255,255,255,0.18); stroke-width: 1.5px; fill: var(--bg); }
+svg .node.recipe > circle  { stroke: rgba(0,0,0,0.25); stroke-width: 0.5px; }
+svg .node.dim > circle     { opacity: 0.12; }
+svg .node.hit  > circle    { stroke: var(--accent); stroke-width: 2px; }
+
+svg text {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  fill: #fff;
+  pointer-events: none;
+  text-anchor: middle;
+  dominant-baseline: central;
+  paint-order: stroke;
+  stroke: rgba(0,0,0,0.55);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+svg .label-station { font-weight: 600; }
+svg .label-recipe  { font-weight: 400; }
+
+.tooltip {
+  position: absolute; pointer-events: none;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 4px; padding: 8px 10px; font-size: 12px;
+  max-width: 280px; opacity: 0; transition: opacity 80ms linear;
+  z-index: 10;
+}
+.tooltip h3 {
+  margin: 0 0 4px 0; font-size: 13px; color: var(--accent);
+}
+.tooltip .meta { color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+.tooltip ul { margin: 4px 0 0 0; padding-left: 16px; }
+.tooltip ul li { color: var(--text); }
+.tooltip ul li .amt { color: var(--accent); }
+.tooltip ul li.missing { color: #d05858; font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Last Oasis Recipe Bubbles</h1>
+  <input type="text" id="search" placeholder="Search recipe or ingredient&hellip;">
+  <label class="file">
+    Load RecipeTree.json
+    <input type="file" id="file" accept=".json,application/json">
+  </label>
+  <div class="filter-mode" role="radiogroup" aria-label="Recipe filter">
+    <input type="radio" name="mode" id="mode-all"       value="all">
+    <label for="mode-all">All</label>
+    <input type="radio" name="mode" id="mode-items"     value="items" checked>
+    <label for="mode-items">Items</label>
+    <input type="radio" name="mode" id="mode-materials" value="materials">
+    <label for="mode-materials">Materials</label>
+  </div>
+  <span class="totals" id="totals"></span>
+  <span class="legend">click a station to zoom &nbsp;&middot;&nbsp; click center / outside to zoom out</span>
+</header>
+
+<div id="stage">
+  <div class="empty" id="empty">
+    Drop <code>RecipeTree.json</code> here, or click <strong>Load RecipeTree.json</strong>.<br>
+    Default location: <code>%LOCALAPPDATA%\Mist\Saved\RecipeTree.json</code>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script>
+"use strict";
+
+// Display-time renames for the two top-level menus.  The asset-side names are
+// "Base" (handcraft) and "Construction" (placeables); we rebrand them so the
+// bubbles read like the in-game menus.
+const STATION_RENAMES = {
+  "Base":         "Crafting Menu",
+  "Construction": "Building Menu",
+};
+const SPECIAL = {
+  "Crafting Menu": { color: "#5fbf6a", label: "'C' handcraft menu" },
+  "Building Menu": { color: "#d97a5f", label: "'B' build menu" },
+};
+
+let DATA = null;
+let INTERMEDIATES = new Set();   // result names that are also used as ingredients somewhere
+let svg, g, root, focus, view;
+let nodeSel, labelSel;
+let stationColor;
+
+const $ = id => document.getElementById(id);
+
+// ---------- file loading ----------
+
+$("file").addEventListener("change", e => {
+  if (e.target.files[0]) loadFile(e.target.files[0]);
+});
+const dropTarget = $("empty");
+["dragenter","dragover"].forEach(ev => document.addEventListener(ev, e => {
+  e.preventDefault(); if (dropTarget) dropTarget.classList.add("drag-over");
+}));
+["dragleave","drop"].forEach(ev => document.addEventListener(ev, e => {
+  e.preventDefault(); if (dropTarget) dropTarget.classList.remove("drag-over");
+}));
+document.addEventListener("drop", e => {
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      DATA = JSON.parse(e.target.result);
+      applyStationRenames(DATA);
+      computeIntermediates();
+      $("empty").style.display = "none";
+      build();
+    } catch (err) {
+      alert("Failed to parse JSON: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function applyStationRenames(data) {
+  const groups = data && data.groups;
+  if (!groups) return;
+  for (const [from, to] of Object.entries(STATION_RENAMES)) {
+    if (groups[from] && !groups[to]) {
+      groups[to] = groups[from];
+      delete groups[from];
+    }
+  }
+}
+
+// A recipe is "intermediate" if its result name appears as an ingredient in
+// any recipe.  This catches Ceramic Shard, Iron Ingot, Wood Shaft, Charcoal,
+// Bone Glue, Fiber, Rope, etc.
+//
+// Two overrides on top of that:
+//
+// 1. Some stations consume *finished items* in bulk -- PackageCrafting takes
+//    whole armors/weapons and outputs a "shipment" bundle.  Those references
+//    are not evidence of being a material; skip them when harvesting names.
+//
+// 2. Some item kinds are always final products even if other recipes consume
+//    them (e.g. a Bone Bolt is ammunition; a Bone Harpoon recipe still uses
+//    it as an ingredient, but the bolt is the player-facing item).  Detect
+//    via asset path -- Last Oasis groups assets by purpose.
+const NON_MATERIAL_CONSUMER_STATIONS = new Set(["PackageCrafting"]);
+const ALWAYS_ITEM_PATH_FRAGMENTS = [
+  "/Items/Ammo/",                // bolts, darts, harpoons, roks, scattershot
+  "/Items/Equipment/",           // tools, weapons, armor
+  "/Items/Modules/",             // walker / base modules
+  "/Items/Usable/",              // grenades, throwables, consumables
+  "/Items/MusicalInstruments/",
+  "/Items/WalkerParts/",         // legs / wings as standalone items
+  "/Placeables/",                // every B-menu build
+];
+
+function isAlwaysItem(recipe) {
+  const p = recipe && recipe.result_path;
+  if (!p) return false;
+  for (const frag of ALWAYS_ITEM_PATH_FRAGMENTS) {
+    if (p.indexOf(frag) !== -1) return true;
+  }
+  return false;
+}
+
+function computeIntermediates() {
+  INTERMEDIATES = new Set();
+  const groups = (DATA && DATA.groups) || {};
+  const ingredientNames = new Set();
+  for (const station of Object.keys(groups)) {
+    if (NON_MATERIAL_CONSUMER_STATIONS.has(station)) continue;
+    for (const r of groups[station]) {
+      for (const ing of r.ingredients || []) {
+        if (ing.item) ingredientNames.add(ing.item);
+      }
+    }
+  }
+  for (const station of Object.keys(groups)) {
+    for (const r of groups[station]) {
+      const name = r.result_id || r.result;
+      if (!name) continue;
+      if (isAlwaysItem(r)) continue;     // ammo / equipment / modules / placeables
+      // Match against both result names and asset ids -- ingredient refs use
+      // the asset id (e.g. "Fiber") while result is the display name ("Fiber").
+      if (ingredientNames.has(r.result_id) || ingredientNames.has(r.result)) {
+        INTERMEDIATES.add(r.result_id || r.result);
+      }
+    }
+  }
+}
+
+// ---------- hierarchy ----------
+
+function buildHierarchy() {
+  const groups = DATA.groups || {};
+  const stations = Object.keys(groups);
+  const ordered = [];
+  for (const s of ["Crafting Menu","Building Menu"]) if (stations.includes(s)) ordered.push(s);
+  for (const s of stations.sort()) if (!ordered.includes(s)) ordered.push(s);
+
+  const mode = currentMode();
+  const keep = r => {
+    if (mode === "all") return true;
+    const id = r.result_id || r.result;
+    if (!id) return mode !== "materials";
+    const isMaterial = INTERMEDIATES.has(id);
+    return mode === "materials" ? isMaterial : !isMaterial;
+  };
+
+  const stationChildren = ordered.map(station => ({
+    name: station,
+    kind: "station",
+    children: (groups[station] || []).filter(keep).map(r => ({
+      name: r.result || r.result_id || "?",
+      kind: "recipe",
+      recipe: r,
+      // bubble size: 1 base + 0.6 per ingredient -- recipes with more
+      // ingredients read as a touch larger, but counts dominate the layout.
+      value: 1 + 0.6 * (r.ingredients ? r.ingredients.length : 0),
+    })),
+  })).filter(s => s.children.length > 0);
+
+  return { name: "Last Oasis Recipes", children: stationChildren };
+}
+
+// ---------- render ----------
+
+function build() {
+  const stage = $("stage");
+  stage.querySelectorAll("svg").forEach(s => s.remove());
+
+  const W = stage.clientWidth;
+  const H = stage.clientHeight;
+  const size = Math.min(W, H) - 20;
+
+  const data = buildHierarchy();
+  root = d3.pack().size([size, size]).padding(d => d.depth === 0 ? 6 : (d.depth === 1 ? 3 : 1.5))
+            (d3.hierarchy(data).sum(d => d.value || 0).sort((a,b) => b.value - a.value));
+
+  const palette = d3.scaleOrdinal(d3.schemeTableau10.concat(d3.schemeSet3));
+  stationColor = name => SPECIAL[name] ? SPECIAL[name].color : palette(name);
+
+  const visibleRecipes = root.descendants().filter(d => d.depth === 2).length;
+  const mode = currentMode();
+  const modeLabel = mode === "items"     ? "items only"
+                  : mode === "materials" ? "materials only"
+                  :                        "all recipes";
+  $("totals").textContent =
+    `${visibleRecipes} ${modeLabel}  |  ${root.children.length} stations`;
+
+  svg = d3.select(stage).append("svg")
+    .attr("viewBox", `${-W/2} ${-H/2} ${W} ${H}`)
+    .attr("width",  W)
+    .attr("height", H)
+    .style("background", "var(--bg)");
+
+  g = svg.append("g");
+
+  nodeSel = g.selectAll("g.node")
+    .data(root.descendants())
+    .join("g")
+      .attr("class", d =>
+        "node " + (d.depth === 0 ? "root" :
+                   d.depth === 1 ? "station" : "recipe"));
+
+  nodeSel.append("circle")
+    .attr("r", d => d.r)
+    .attr("fill", d => {
+      if (d.depth === 0) return "transparent";
+      const stationName = d.depth === 1 ? d.data.name : d.parent.data.name;
+      const c = d3.color(stationColor(stationName));
+      if (d.depth === 2) c.opacity = 0.85;
+      return c.formatRgb();
+    })
+    .on("mouseenter", (event, d) => showTooltip(event, d))
+    .on("mousemove",  moveTooltip)
+    .on("mouseleave", hideTooltip)
+    .on("click", (event, d) => {
+      if (d.depth === 0) return;
+      // Click a station -> zoom to it.
+      // Click a recipe -> zoom to its station so siblings stay readable.
+      const target = d.depth === 1 ? d : d.parent;
+      if (focus !== target) { zoomTo(target); event.stopPropagation(); }
+    });
+
+  labelSel = g.selectAll("text")
+    .data(root.descendants().filter(d => d.depth >= 1))
+    .join("text")
+      .attr("class", d => d.depth === 1 ? "label-station" : "label-recipe")
+      .text(d => d.data.name);
+
+  // initial focus = root (everything visible)
+  focus = root;
+  zoomTo(root, 0);
+
+  svg.on("click", () => zoomTo(root));
+
+  document.addEventListener("keydown", onEsc);
+}
+
+function onEsc(e) { if (e.key === "Escape") zoomTo(root); }
+
+// ---------- zoom ----------
+
+function zoomTo(target, duration = 500) {
+  focus = target;
+  // Compute view: [cx, cy, diameter]
+  const k = Math.min($("stage").clientWidth, $("stage").clientHeight) / (target.r * 2 + 8);
+  view = [target.x, target.y, target.r * 2];
+
+  const t = svg.transition().duration(duration);
+
+  g.transition(t)
+    .attr("transform", `translate(${-view[0]*k}, ${-view[1]*k}) scale(${k})`);
+
+  nodeSel.transition(t).style("display", d => isVisible(d, target) ? null : "none");
+  labelSel
+    .style("font-size", d => labelFontSize(d, k) + "px")
+    .style("display",   d => labelVisible(d, target, k) ? null : "none")
+    .transition(t)
+    .attr("x", d => d.x)
+    .attr("y", d => d.y);
+
+  nodeSel.transition(t)
+    .attr("transform", d => `translate(${d.x}, ${d.y})`);
+}
+
+function isVisible(d, target) {
+  if (d === target) return true;
+  if (d.depth <= target.depth) return d.depth === 0 ? true : false;
+  // Show only descendants and siblings of focus
+  if (target.depth === 0) return true; // show all stations and recipes
+  if (d.depth === 1) return true;       // always show station outlines
+  return d.parent === target || d.parent.parent === target;
+}
+
+function labelFontSize(d, k) {
+  // pixel font size = base / k * scaling factor, but rendered through transform
+  const r = d.r * k;
+  if (d.depth === 1) return Math.max(10, Math.min(28, r / 4)) / k;
+  return Math.max(8,  Math.min(14, r / 4)) / k;
+}
+
+function labelVisible(d, target, k) {
+  if (d.depth === 1) {
+    // Show station label only when at root view, or when this IS the focus
+    return target.depth === 0 || d === target;
+  }
+  if (d.depth === 2) {
+    // Show recipe labels only inside the focused station, and only when their
+    // rendered radius is large enough to fit the text.
+    if (target.depth === 0) return false;
+    if (d.parent !== target) return false;
+    return d.r * k > 18;
+  }
+  return false;
+}
+
+// ---------- tooltip ----------
+
+const tt = $("tooltip");
+function showTooltip(event, d) {
+  if (d.depth === 0) return;
+  if (d.depth === 1) {
+    const special = SPECIAL[d.data.name];
+    tt.innerHTML =
+      `<h3>${escapeHTML(d.data.name)}</h3>` +
+      (special ? `<div class="meta">${escapeHTML(special.label)}</div>` : "") +
+      `<div class="meta">${d.children ? d.children.length : 0} recipes</div>`;
+  } else {
+    const r = d.data.recipe;
+    const ings = (r.ingredients || []).map(i =>
+      i.item
+        ? `<li><span>${escapeHTML(i.item)}</span> <span class="amt">x${i.amount||1}</span></li>`
+        : `<li class="missing">&lt;missing&gt; x${i.amount||1}</li>`
+    ).join("");
+    const meta = [];
+    if (r.experience)          meta.push(`xp ${r.experience}`);
+    if (r.required_unlockable) meta.push(escapeHTML(r.required_unlockable));
+    if (r.result_amount && r.result_amount !== 1) meta.push(`yields x${r.result_amount}`);
+    tt.innerHTML =
+      `<h3>${escapeHTML(d.data.name)}</h3>` +
+      (meta.length ? `<div class="meta">${meta.join(" &middot; ")}</div>` : "") +
+      (ings ? `<ul>${ings}</ul>` : `<div class="meta">no ingredients</div>`);
+  }
+  tt.style.opacity = "1";
+  moveTooltip(event);
+}
+function moveTooltip(event) {
+  const pad = 14;
+  const w = tt.offsetWidth, h = tt.offsetHeight;
+  let x = event.clientX + pad, y = event.clientY + pad;
+  if (x + w > window.innerWidth)  x = event.clientX - w - pad;
+  if (y + h > window.innerHeight) y = event.clientY - h - pad;
+  tt.style.left = x + "px";
+  tt.style.top  = y + "px";
+}
+function hideTooltip() { tt.style.opacity = "0"; }
+
+// ---------- search ----------
+
+$("search").addEventListener("input", e => {
+  const q = e.target.value.trim().toLowerCase();
+  if (!nodeSel) return;
+  if (!q) {
+    nodeSel.classed("dim", false).classed("hit", false);
+    return;
+  }
+  nodeSel.classed("dim", d => {
+    if (d.depth === 0) return false;
+    if (d.depth === 1) {
+      // station: dim unless any of its recipes match
+      return !d.children.some(c => recipeMatches(c.data.recipe, q));
+    }
+    return !recipeMatches(d.data.recipe, q);
+  });
+  nodeSel.classed("hit", d => d.depth === 2 && recipeMatches(d.data.recipe, q));
+});
+
+function recipeMatches(r, q) {
+  if (!r) return false;
+  if ((r.result || "").toLowerCase().includes(q))     return true;
+  if ((r.result_id || "").toLowerCase().includes(q))  return true;
+  for (const ing of r.ingredients || []) {
+    if ((ing.item || "").toLowerCase().includes(q))   return true;
+  }
+  return false;
+}
+
+// ---------- util ----------
+
+function escapeHTML(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+window.addEventListener("resize", () => { if (DATA) build(); });
+function currentMode() {
+  const checked = document.querySelector("input[name='mode']:checked");
+  return checked ? checked.value : "items";
+}
+document.querySelectorAll("input[name='mode']").forEach(el =>
+  el.addEventListener("change", () => { if (DATA) build(); }));
+</script>
+
+</body>
+</html>
