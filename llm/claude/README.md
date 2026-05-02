@@ -22,7 +22,7 @@ The zip contains `SKILL.md` (the skill instructions, with frontmatter triggers a
 
 ## What it covers
 
-The skill's `SKILL.md` frontmatter triggers on mentions of: Modkit, SDKTest branch, Mist project, Steam Workshop publishing, MyRealm, Blueprint API questions, and a few related terms. Once active, it branches into four workflows:
+The skill's `SKILL.md` frontmatter triggers on mentions of: Modkit, the Mist project, Steam Workshop publishing, MyRealm, Blueprint API questions, and a few related terms (the snapshot also lists `SDKTest` as a trigger — that branch is no longer required for modded play, but the skill still recognises the term). Once active, it branches into four workflows:
 
 1. **Onboarding** — new modder, first install
 2. **Reference Q&A** — Blueprint API, schema, settings

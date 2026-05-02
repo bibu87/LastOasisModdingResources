@@ -2,10 +2,9 @@
 
 > **Source:** Variant of the official Donkey Crew doc [*ModKit Guide — 1) Host a Modded Server*](https://docs.google.com/document/d/1V8jJdzFYfUv4UTnQS7uEU99rdu9njwvoh4V5mn8L_7U/). Expanded with platform-specific install paths, full command-line reference, dependency-list rules, and a daily mod-updater script for Linux. Verify volatile claims against the [#modkit channels on the official Discord](https://discord.gg/lastoasis).
 
-Hosting a modded server is mechanically the same as hosting a normal Last Oasis private server — same binary, same MyRealm setup — with two extras:
+Hosting a modded server is mechanically the same as hosting a normal Last Oasis private server — same binary, same MyRealm setup — with one extra step: the server's mod files must be present on disk **before** it boots, and the corresponding mod IDs must be listed in the realm config (`Mods=` in MyRealm Gameplay) **plus** any transitive dependencies.
 
-1. The server must be on the **`SDKTest`** Steam branch (modded builds are not compatible with the live branch).
-2. The server's mod files must be present on disk **before** it boots, and the corresponding mod IDs must be listed in the realm config (`Mods=` in MyRealm Gameplay) **plus** any transitive dependencies.
+> **Heads-up if you're following older guides:** modded play used to require both client and server to switch to the `SDKTest` Steam branch. That requirement was lifted — the default Last Oasis branch (Steam app `903950` for the client, `920720` for the dedicated server) supports modded play directly. You can ignore any `-beta sdktest` flags / "switch to SDKTest" instructions in older docs and videos.
 
 This guide covers Windows and Linux. For the realm-management side (creating the realm, getting your `CustomerKey` / `ProviderKey`), start at the **MyRealm portal**: <https://myrealm.lastoasis.gg/>.
 
@@ -16,14 +15,14 @@ This guide covers Windows and Linux. For the realm-management side (creating the
 - A MyRealm account with a created realm. From the realm panel you'll get:
   - **CustomerKey** and **ProviderKey** — your launch script needs both.
   - The **`Mods=` Gameplay setting** — comma-separated list of Workshop IDs the realm should load.
-- The dedicated server installed via SteamCMD (app `920720`, beta branch `sdktest`).
+- The dedicated server installed via SteamCMD (app `920720`, default branch).
 - A way to run the server binary as long-lived process — Task Scheduler / NSSM on Windows, systemd on Linux, or a TTY/screen session if you're just testing.
 - Inbound firewall holes for your chosen game and query ports (5911 / 5961 in the examples below).
 
 ### Install the dedicated server (Windows)
 
 ```
-steamcmd.exe +force_install_dir "C:\Steam\LastOSDK" +login anonymous +app_update 920720 -beta sdktest validate +quit
+steamcmd.exe +force_install_dir "C:\Steam\LastOSDK" +login anonymous +app_update 920720 validate +quit
 ```
 
 (This is also documented in the repo [README](../../README.md#modded-server-hosting).)
@@ -31,12 +30,12 @@ steamcmd.exe +force_install_dir "C:\Steam\LastOSDK" +login anonymous +app_update
 ### Install the dedicated server (Linux)
 
 ```
-./steamcmd.sh +force_install_dir ./LastOSDK +login anonymous +app_update 920720 -beta sdktest validate +quit
+./steamcmd.sh +force_install_dir ./LastOSDK +login anonymous +app_update 920720 validate +quit
 ```
 
-### Switch your **client** to `SDKTest` to be able to join
+### Client side
 
-In Steam, right-click *Last Oasis* → **Properties** → **Betas** → select `SDKTest`. The client and server branches must match for modded play.
+Just have Last Oasis installed on the default Steam branch — no opt-in required. The branches between client and server still need to match (default to default). If you're on a Beta branch for any reason, switch off it.
 
 ---
 
@@ -209,7 +208,7 @@ There's currently no separate "modded server" tab. Modded and vanilla servers ap
 
 - [ ] Server log shows `LogLoad: Game Engine Initialized.` and no `error: missing mod ...` lines.
 - [ ] The server appears in Steam's server browser at `<YourIP>:<QueryPort>`.
-- [ ] You can connect from a client running the **`SDKTest`** branch.
+- [ ] You can connect from a Last Oasis client (default branch — same branch as the server).
 - [ ] Modded content (items, walkers, recipes) actually appears in-game — not just the realm boots.
 - [ ] If using a custom map, `LogWorld: ... Loading map /Game/Mods/...` near the start of the boot log matches your `-MapPath`.
 
@@ -219,7 +218,7 @@ There's currently no separate "modded server" tab. Modded and vanilla servers ap
 
 - **"Failed to mount mod ID …" on boot.** Almost always a missing dependency. Add the missing ID to both `Mods=` and the SteamCMD download list, restart.
 - **Server boots but no mods load.** `Mods=` is empty in MyRealm, or the file paths under `Mist/Content/Mods/` don't match the listed IDs (e.g. you copied the inner folder one level too deep — there should be one folder per mod ID directly under `Mods/`).
-- **Players can see the server but can't join.** Wrong branch on either side. Both client and server must be on `SDKTest`.
+- **Players can see the server but can't join.** Branch mismatch — both client and server must be on the same Steam branch (default for both, in current builds).
 - **Clients connect but immediately get "version mismatch" / kicked.** A mod was updated on Workshop and the server hasn't pulled the new version yet. Run the updater script and restart the server.
 - **EAC kicks players off.** Forgot `-noeac` on the launch line. EAC is incompatible with modded play.
 - **Server uses the wrong public IP.** Set `-OverrideConnectionAddress=YourPublicIP`. Without it, the server may report a private/LAN address to the matchmaker and players will see "connection failed" after the lobby.

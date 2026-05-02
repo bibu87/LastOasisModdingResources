@@ -183,7 +183,7 @@ After upload, the Workshop item appears under your **Steam Workshop "Submissions
 A successful cook does not guarantee a working mod. Smoke-test it before announcing:
 
 1. Spin up a local modded server with **only this mod** in `Mods=`. See [Host a modded server](host-a-modded-server.md).
-2. Switch your client to the **`SDKTest`** Steam branch.
+2. Make sure your client is on the same Steam branch as the server (default for both, in current builds — no `SDKTest` opt-in required anymore).
 3. Connect to the server and exercise every modded feature (placeables, items, walkers, recipes, map…).
 4. Check the server log for warnings/errors during boot and during play. Things that look fine in the editor sometimes blow up on a dedicated server (`OnConstruction` ordering, replication, missing mobile/console-only fallbacks).
 

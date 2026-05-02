@@ -210,7 +210,7 @@ Mods=3120415400,3135800212,3197306614
 1. **Comma-separated Steam Workshop IDs.** No spaces, no quotes.
 2. **Every dependency must be listed explicitly.** MyRealm does not auto-resolve dependency chains. If mod A depends on mod B, both IDs go in `Mods=`. See [mod-references.md](modkit-guides/mod-references.md) for why.
 3. **The IDs in `Mods=` must also exist as folders on the server's filesystem** under `Mist/Content/Mods/<MOD_ID>/`. MyRealm publishes the list to clients but does not place the files on the server box — that's SteamCMD's job. See [host-a-modded-server.md](modkit-guides/host-a-modded-server.md) for the install/update workflow.
-4. **`SDKTest` Steam branch on both client and server.** Modded play is incompatible with the live branch. Players who can't see the modded server are usually on the wrong branch.
+4. **Branch parity.** Both client and server must be on the same Steam branch — the default branch supports modded play (older docs mention an `SDKTest` opt-in, no longer required).
 5. **EAC must be off** on the server (`-noeac` launch flag). EAC and mods are mutually exclusive.
 
 ### Common failure patterns
@@ -220,7 +220,7 @@ Mods=3120415400,3135800212,3197306614
 | Server boots but no mods load | `Mods=` empty in MyRealm, or files not on disk under `Mist/Content/Mods/`. |
 | Server fails to boot with "missing mod" log line | Dependency missing from `Mods=`. Add the missing ID, restart. |
 | Players see server but get version-mismatch on join | Workshop mod was updated; server hasn't pulled the new version. Run the SteamCMD updater, restart. |
-| Modded realm doesn't appear in browser at all | Realm not active in MyRealm, or wrong branch on either side (must be `SDKTest` for modded). |
+| Modded realm doesn't appear in browser at all | Realm not active in MyRealm, or branch mismatch on either side (both should be on the default Steam branch in current builds). |
 
 ### Naming convention
 
@@ -259,8 +259,8 @@ Pools are an organisational layer over oases.
 5. **Tune gameplay settings** — at minimum, set the multipliers (XP, harvest, foliage) and PvP toggles to your desired ruleset.
 6. **Realm → Gameplay → `Mods=`** — list every Workshop mod ID, including transitive dependencies.
 7. **Add realm admins** by SteamID for in-game commands.
-8. **Server-side**: install dedicated server on `SDKTest` branch, place mod folders under `Mist/Content/Mods/<MOD_ID>/`, build a launch script with `CustomerKey`, `ProviderKey`, `-noeac`, ports, slots — see [host-a-modded-server.md](modkit-guides/host-a-modded-server.md).
-9. **Set the realm to active**, boot the server, verify it appears in the in-game realm list (on `SDKTest`).
+8. **Server-side**: install dedicated server (default Steam branch — `SDKTest` is no longer required), place mod folders under `Mist/Content/Mods/<MOD_ID>/`, build a launch script with `CustomerKey`, `ProviderKey`, `-noeac`, ports, slots — see [host-a-modded-server.md](modkit-guides/host-a-modded-server.md).
+9. **Set the realm to active**, boot the server, verify it appears in the in-game realm list.
 10. **Document the required mod list** in your community Discord and on the realm's description — server admins of mirrored realms need it, and players sometimes need it for troubleshooting.
 
 ---
@@ -272,7 +272,7 @@ Pools are an organisational layer over oases.
 - **Wipe happened at the wrong time.** Decay time is **UTC**, not local. Convert before you set it.
 - **Mods= is set but server still fails to boot.** Mod folders aren't on disk — `Mods=` is the *announce* list, not the *install* list. Run SteamCMD to fetch each ID, copy into `Mist/Content/Mods/`.
 - **Custom map doesn't load.** The map dropdown only contains stock maps. Custom maps need `-MapPath="/Game/Mods/<YourMod>/<YourMap>"` on the server launch line, not a MyRealm setting.
-- **Players say "[MODDED] xyz" doesn't appear in the list.** Wrong branch on the player's side. They need to switch to `SDKTest` (Steam → Last Oasis → Properties → Betas).
+- **Players say "[MODDED] xyz" doesn't appear in the list.** Branch mismatch — both client and server should be on the same Steam branch (default for both, in current builds). If the player is opted into any Steam Beta branch, switch off it.
 - **Per-oasis override "didn't apply"** — you saved a setting at the realm level, but the oasis already has an explicit override. Check the oasis's own settings tab; explicit overrides win.
 
 ---

@@ -205,7 +205,7 @@ Before pushing the migrated mod to the live Workshop item:
 
 1. Mod Manager → **Cook and Package Mod**. Wait for the batch script to finish — never close the cook window mid-cook.
 2. Spin up a local modded server with **only this mod** in `Mods=`. See [Host a modded server](host-a-modded-server.md).
-3. Join the server in `SDKTest` Steam branch and verify the modded content loads, behaves as expected, and produces no errors in the server log.
+3. Join the server with your Last Oasis client (default Steam branch — `SDKTest` is no longer required) and verify the modded content loads, behaves as expected, and produces no errors in the server log.
 
 If everything looks good, then upload from Mod Manager. **Bump `version.Minor` (or higher) before re-uploading**, so subscribers get the migrated build picked up by Steam.
 

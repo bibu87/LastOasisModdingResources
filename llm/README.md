@@ -1,8 +1,8 @@
 # LLM bundles
 
-Drop-in prompts that pre-load an AI assistant with Last Oasis Modkit knowledge — UE 4.25.4, the `Mist` project, the `SDKTest` Steam branch, MyRealm setup, EAC quirks, the Blueprint API surface, and the contents of [`../data/`](../data/).
+Drop-in prompts that pre-load an AI assistant with Last Oasis Modkit knowledge — UE 4.25.4, the `Mist` project, MyRealm setup, EAC quirks, the Blueprint API surface, and the contents of [`../data/`](../data/).
 
-Both bundles are **snapshots from April 2026**. The Modkit moves quickly; both prompts tell the LLM to verify volatile claims against the [official Discord](https://discord.gg/lastoasis).
+Both bundles are **snapshots from April 2026**. The Modkit moves quickly — for example, both bundles still describe the (now-lifted) `SDKTest` Steam branch requirement for modded play. Both prompts tell the LLM to verify volatile claims against the [official Discord](https://discord.gg/lastoasis).
 
 ## Pick one
 
