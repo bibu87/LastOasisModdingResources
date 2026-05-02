@@ -80,6 +80,15 @@ Copy downloaded content from `C:\Steam\LastOSDK\steamapps\workshop\content\90395
 │   ├── LastOasis_APIs.json
 │   ├── RecipeTree.json
 │   └── widget_bp_functions.txt
+├── docs/
+│   ├── modkit-python-scripting.md         # How to use & extend the editor-side Python scripts
+│   ├── myrealm-configuration.md           # MyRealm portal field-by-field reference
+│   └── modkit-guides/                     # Expanded variants of the official Drive docs
+│       ├── how-to-make-and-upload-a-mod.md
+│       ├── host-a-modded-server.md
+│       ├── load-custom-maps.md
+│       ├── mod-references.md
+│       └── porting-a-mod-from-old-modkit.md
 ├── llm/                                   # AI assistants & prompts for Modkit help
 │   ├── claude/
 │   │   └── claude-skill.zip               # Claude Skill bundle (SKILL.md + .skill file)
@@ -95,6 +104,23 @@ Copy downloaded content from `C:\Steam\LastOSDK\steamapps\workshop\content\90395
     ├── recipe_bubbles.html
     └── recipe_viewer.html
 ```
+
+### [docs/](docs/)
+
+Standalone reference docs (not variants of the official Drive guides):
+
+- [docs/modkit-python-scripting.md](docs/modkit-python-scripting.md) — how to enable the Python plugin in the Modkit, three ways to run a script, what each of the four scripts in [scripts/modkit/](scripts/modkit/) does, UE 4.25 Python gotchas (CDOs, `unreal.Map` keys-only iteration, `_C` suffixes), and a minimal extractor template for writing your own.
+- [docs/myrealm-configuration.md](docs/myrealm-configuration.md) — field-by-field reference for the [MyRealm portal](https://myrealm.lastoasis.gg/): identity, access, hosting mode, events, oasis settings, the full gameplay-tuning surface (multipliers, claims, combat, decay, economy, PvP toggles, walker mechanics), the `Mods=` field, and end-to-end checklist for spinning up a new modded realm.
+
+### [docs/modkit-guides/](docs/modkit-guides/)
+
+Community-maintained, expanded variants of the five official Donkey Crew Modkit guides hosted in the [Drive folder](https://drive.google.com/drive/folders/1QqS5Z32g07FLpTja2g6oCUJ3YeJnqND1). Each adds a field-by-field schema reference, full command-line breakdown, troubleshooting / common-pitfalls sections, and cross-links between related topics.
+
+- [docs/modkit-guides/how-to-make-and-upload-a-mod.md](docs/modkit-guides/how-to-make-and-upload-a-mod.md) — end-to-end author loop: editor launch → Mod Manager → cook → Workshop upload.
+- [docs/modkit-guides/host-a-modded-server.md](docs/modkit-guides/host-a-modded-server.md) — server install (`SDKTest` branch), launch flags, mods + dependencies, daily updater scripts.
+- [docs/modkit-guides/load-custom-maps.md](docs/modkit-guides/load-custom-maps.md) — `-MapPath`, beta caveats, WorldMachine pipeline notes.
+- [docs/modkit-guides/mod-references.md](docs/modkit-guides/mod-references.md) — using assets from another mod via Mod Manager imports.
+- [docs/modkit-guides/porting-a-mod-from-old-modkit.md](docs/modkit-guides/porting-a-mod-from-old-modkit.md) — `modKitVersion` 2 → 3 migration, including recovery from Workshop.
 
 ### [data/](data/)
 
