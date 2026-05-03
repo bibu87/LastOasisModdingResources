@@ -4,11 +4,14 @@ Standalone Python 3 scripts that run **on the host** (not inside the Modkit's UE
 
 For editor-side scripts (Python that runs inside the Modkit), see [`modkit/`](modkit/).
 
+For UAsset diagnostic + recovery tools (when the editor's load + re-save cycle damaged assets), see [`uasset/`](uasset/).
+
 ## At a glance
 
 | Script | Purpose |
 | --- | --- |
 | [`mod_workflow.py`](mod_workflow.py) | Interactive wizard that walks a Last Oasis mod from any starting state through Cook + Upload to Steam Workshop. The canonical migration tool. |
+| [`uasset/`](uasset/) | Toolkit for diagnosing and recovering `.uasset` files damaged by upstream renames or migration. Workshop-pak vs. project triage, header/property dumpers, and a binary patcher for struct renames without CoreRedirects. |
 
 ---
 
