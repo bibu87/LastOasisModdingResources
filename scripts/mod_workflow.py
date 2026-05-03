@@ -844,6 +844,13 @@ def main(argv: List[str]) -> int:
                         help="Mod folder name.")
     parser.add_argument("--author", default="",
                         help="Author name (used only if not already set in the manifest).")
+    parser.add_argument("--no-lock", action="store_true",
+                        help="Skip the read-only locking step. The recipe normally locks "
+                             "the manifest + source files so the Modkit's destructive "
+                             "overwrites silently fail. Without locking, opening the mod "
+                             "in the Modkit will likely wipe the staged state - the cook "
+                             "will probably ship an empty 238-byte .pak. Use only for "
+                             "experimenting / understanding what the locks protect against.")
     args = parser.parse_args(argv)
 
     modkit_root = args.modkit.resolve()
@@ -906,9 +913,14 @@ def main(argv: List[str]) -> int:
     info("\nWriting thumbnail...")
     write_thumbnail(s)
 
-    info("\nLocking everything read-only...")
-    locked = lock_recipe_state(s, assets_to_cook)
-    ok(f"locked {locked} file(s)")
+    if args.no_lock:
+        warn("Skipping read-only lock (--no-lock). The Modkit's load + Cook + "
+             "Save Mod will most likely wipe the staged state. Backup zip is "
+             "your fallback if it does.")
+    else:
+        info("\nLocking everything read-only...")
+        locked = lock_recipe_state(s, assets_to_cook)
+        ok(f"locked {locked} file(s)")
 
     # Re-diagnose
     diagnose(s)
