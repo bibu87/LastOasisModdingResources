@@ -4,8 +4,9 @@ patch_struct_rename.py
 ======================
 
 Recover a UE4 .uasset file whose serialized property data references a
-struct that has since been renamed in C++ (e.g. `MistWalkerRigSpot` ->
-`MistRupuRigSpot`).
+struct that has since been renamed in C++ (i.e. an `OldStructName` ->
+`NewStructName` rename in engine code, where the new struct keeps the
+same field layout but lives under a different name).
 
 When such a rename happens without a CoreRedirect, the editor can't
 deserialize the struct on load and silently re-saves the asset with all

@@ -19,9 +19,9 @@ Buckets reported
   SHRUNK         — the live file is at least 10% smaller than the original.
                    Strong signal of data loss (e.g. property bag pruning,
                    component overrides dropped, function graphs gutted).
-  STRUCT_RENAMED — the original referenced a known-renamed struct (e.g.
-                   `MistWalkerRigSpot`) that no longer appears in the live
-                   file. Recoverable via `patch_struct_rename.py`.
+  STRUCT_RENAMED — the original referenced a known-renamed struct (set
+                   the marker via --struct-marker) that no longer appears
+                   in the live file. Recoverable via `patch_struct_rename.py`.
   DIFF           — files differ but sizes are close. Usually benign editor
                    re-save with newer formatting.
   IDENTICAL      — byte-for-byte identical. Listed as a count only.
@@ -35,15 +35,17 @@ Usage
   pak_zip          Path to the workshop archive (e.g. Saved/Mods/<Mod>/<id>.zip).
                    The Modkit always produces these alongside the .pak.
   project_root     The Modkit's `Game/` folder (the parent of `Content/`).
-  --struct-marker  Old struct name to flag (default `MistWalkerRigSpot`).
-                   Pass to detect different rename patterns. Can repeat.
+  --struct-marker  Old struct name to flag for the STRUCT_RENAMED bucket.
+                   Pass once per known C++ rename. If omitted, the
+                   STRUCT_RENAMED bucket is skipped entirely.
 
 Example
 -------
 
     python compare_workshop_pak.py \\
-        "D:/Program Files/Epic Games/LastOasisModkit/Game/Saved/Mods/OasisAdrift/3120415400.zip" \\
-        "D:/Program Files/Epic Games/LastOasisModkit/Game"
+        "D:/Program Files/Epic Games/LastOasisModkit/Game/Saved/Mods/MyMod/1234567890.zip" \\
+        "D:/Program Files/Epic Games/LastOasisModkit/Game" \\
+        --struct-marker OldStructName
 
 Standard library only — no `pip install` step.
 """
@@ -66,13 +68,10 @@ def main():
     ap.add_argument("pak_zip", help="Path to the workshop archive (Saved/Mods/<Mod>/<id>.zip)")
     ap.add_argument("project_root", help="Path to the Modkit's Game/ folder")
     ap.add_argument("--struct-marker", action="append", default=[],
-                    help="Old struct name to flag (default: MistWalkerRigSpot). Can be passed multiple times.")
+                    help="Old struct name to flag for the STRUCT_RENAMED bucket. Pass once per known C++ rename.")
     ap.add_argument("--shrink-threshold", type=float, default=0.9,
                     help="Treat as SHRUNK when current size < orig*threshold (default 0.9)")
     args = ap.parse_args()
-
-    if not args.struct_marker:
-        args.struct_marker = ["MistWalkerRigSpot"]
 
     zip_path = Path(args.pak_zip)
     if not zip_path.exists():

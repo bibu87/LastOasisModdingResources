@@ -27,7 +27,7 @@ This is the official, supported way to:
 
 ## Step-by-step
 
-1. **Find the mod's Steam Workshop ID.** Open its Workshop page; the URL ends in `?id=<MOD_ID>` (a long numeric string, e.g. `3120415400`). That number is what Mod Manager wants — not the title, not the URL.
+1. **Find the mod's Steam Workshop ID.** Open its Workshop page; the URL ends in `?id=<MOD_ID>` (a long numeric string, e.g. `1234567890`). That number is what Mod Manager wants — not the title, not the URL.
 2. **Open your mod in the ModKit.** From the launcher, pick (or create) the mod you're working on. Wait for the editor to finish loading — switching the active mod while assets are still streaming in can leave the import in a half state.
 3. **Open Mod Manager.** Toolbar → **Mod Manager** icon (the plugin shipped with the ModKit). The main panel opens with your mod's metadata at the top and a *Mod Dependencies* / *Import MOD* section below.
 4. **Paste the ID into "Import MOD"** and click **Add Reference**. The ModKit downloads the cooked Workshop package, unpacks it under a virtual mount point, and registers it as a dependency in your `modinfo.json` (`modDependencies` array).
@@ -62,7 +62,7 @@ If a dependency is delisted or unsubscribed later, your mod will fail to load un
 
 This is where things get sharper. **A server must explicitly list every mod in its `Mods=` list, including all transitive dependencies.** The server does not auto-resolve a dependency tree the way the Steam client does for subscribed players.
 
-If your mod depends on `3120415400` and `3135800212`, and a server admin only lists your mod ID:
+If your mod depends on `1234567890` and `1234567891`, and a server admin only lists your mod ID:
 
 - The server will fail to boot
 - The startup log will contain a "missing dependency" / "failed to mount referenced mod" error

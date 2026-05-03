@@ -1,6 +1,6 @@
 # UAsset diagnostic + recovery tools
 
-A small toolkit for inspecting and recovering UE4 `.uasset` files when the Modkit's load + re-save cycle damages assets. Built while recovering rig data from the [`OasisAdrift`](https://steamcommunity.com/sharedfiles/filedetails/?id=3120415400) mod after a struct rename in the engine's C++ silently zeroed all serialized struct values on load.
+A small toolkit for inspecting and recovering UE4 `.uasset` files when the Modkit's load + re-save cycle damages assets. Built while recovering data from a workshop mod after a USTRUCT rename in the engine's C++ silently zeroed all serialized struct values on load.
 
 Standard library Python only — no `pip install`. Targets the Modkit's UE 4.25 package format (file version 518).
 
@@ -42,7 +42,7 @@ Output groups every asset into one of:
 
 - `MISSING` — the asset was published but is gone from the live project. Restore from the pak.
 - `SHRUNK` — the live file is at least 10% smaller. Strong signal of property loss; needs investigation.
-- `STRUCT_RENAMED` — the original referenced a known-renamed struct (default marker: `MistWalkerRigSpot`) that no longer appears in the live file. Almost always recoverable with `patch_struct_rename.py`.
+- `STRUCT_RENAMED` — the original referenced a known-renamed struct (set the marker via `--struct-marker`) that no longer appears in the live file. Almost always recoverable with `patch_struct_rename.py`.
 - `DIFF` — files differ but sizes are close. Usually a benign editor re-save (slight format updates, normalised offsets).
 - `IDENTICAL` — counted only.
 
@@ -80,10 +80,10 @@ The recoverability depends on what kind of damage you're looking at:
 
 #### STRUCT_RENAMED files — auto-recoverable
 
-When a USTRUCT got renamed in C++ (e.g. `MistWalkerRigSpot` → `MistRupuRigSpot`) and there's no CoreRedirect set up for the rename, the engine fails to deserialize affected property data and re-saves with defaults. As long as the new struct has the same field layout, `patch_struct_rename.py` recovers everything cleanly:
+When a USTRUCT got renamed in C++ (e.g. `OldStructName` → `NewStructName`) and there's no CoreRedirect set up for the rename, the engine fails to deserialize affected property data and re-saves with defaults. As long as the new struct has the same field layout, `patch_struct_rename.py` recovers everything cleanly:
 
 ```
-python patch_struct_rename.py orig.uasset patched.uasset MistWalkerRigSpot MistRupuRigSpot
+python patch_struct_rename.py orig.uasset patched.uasset OldStructName NewStructName
 python dump_props.py patched.uasset    # verify values are preserved
 ```
 

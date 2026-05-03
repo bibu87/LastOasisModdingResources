@@ -202,7 +202,7 @@ Most of the meat of MyRealm. These can be set realm-wide and (typically) overrid
 For modded realms, this is the single most important field — and it lives in **Realm → Gameplay → `Mods=`**.
 
 ```
-Mods=3120415400,3135800212,3197306614
+Mods=1234567890,1234567891,1234567892
 ```
 
 ### Rules

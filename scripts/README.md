@@ -22,7 +22,7 @@ Migrating a v2 mod into the new Modkit involves a few cooperating Modkit-side ga
 ```
 python scripts/mod_workflow.py \
     --modkit "D:/Program Files/Epic Games/LastOasisModkit" \
-    --mod BetterRupuSling \
+    --mod MyMod \
     --author "yourname"
 ```
 
@@ -50,7 +50,7 @@ python scripts/mod_workflow.py \
 ```
 python scripts/mod_workflow.py \
     --modkit "D:/Program Files/Epic Games/LastOasisModkit" \
-    --workshop-id 3591280225 \
+    --workshop-id 1234567890 \
     --author "yourname"
 ```
 

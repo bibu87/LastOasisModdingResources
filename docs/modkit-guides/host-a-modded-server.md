@@ -155,9 +155,9 @@ Create `mymods.txt` listing every mod the server needs (including transitive dep
 
 ```
 login anonymous
-workshop_download_item 903950 3120415400
-workshop_download_item 903950 3135800212
-workshop_download_item 903950 3197306614
+workshop_download_item 903950 1234567890
+workshop_download_item 903950 1234567891
+workshop_download_item 903950 1234567892
 exit
 ```
 
@@ -189,7 +189,7 @@ Wire either of these into Task Scheduler (Windows) / cron (Linux) on a daily cad
 
 Two places carry the mod list, and both have to agree:
 
-1. **MyRealm → Realm → Gameplay → `Mods=`** — `Mods=3120415400,3135800212,3197306614`. This is what the server publishes to clients connecting to the realm.
+1. **MyRealm → Realm → Gameplay → `Mods=`** — `Mods=1234567890,1234567891,1234567892`. This is what the server publishes to clients connecting to the realm.
 2. **The server filesystem** — every ID in the list above must exist as a folder under `Mist/Content/Mods/<MOD_ID>/`.
 
 > **Dependencies do not auto-install on the server.** If mod A depends on mod B (set in `modDependencies` in mod A's `modinfo.json`, or attached as a Steam Workshop required item), you must list **both** A and B in `Mods=` *and* download both via SteamCMD. The server will fail to boot if any referenced mod is missing — check the boot log for the missing ID. See [Mod references](mod-references.md) for how dependencies get added in the first place.

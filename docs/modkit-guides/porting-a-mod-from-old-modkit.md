@@ -228,7 +228,7 @@ The repo ships an interactive wizard at [`scripts/mod_workflow.py`](../../script
 ```
 python scripts/mod_workflow.py \
     --modkit "D:/Program Files/Epic Games/LastOasisModkit" \
-    --mod BetterRupuSling \
+    --mod MyMod \
     --author "yourname"
 ```
 
