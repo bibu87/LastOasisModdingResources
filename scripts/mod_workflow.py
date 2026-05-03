@@ -519,19 +519,11 @@ def stage_source(s: State, assets_to_cook: OrderedDict) -> None:
                     break
             else:
                 warn(f"asset not found at Saved/Mods/{s.mod_name}/ root: {vp}")
-        # The thumbnail (per thumbnailPath) is also moved to Content/.
-        thumb_rel = (s.manifest or {}).get("thumbnailPath", "").lstrip("/").lstrip("\\")
-        if thumb_rel:
-            thumb_src = s.saved_mod_folder / thumb_rel
-            if thumb_src.is_file():
-                thumb_dst = s.content_mod_folder / thumb_rel
-                thumb_dst.parent.mkdir(parents=True, exist_ok=True)
-                if thumb_dst.exists():
-                    unlock_path(thumb_dst)
-                unlock_path(thumb_src)
-                shutil.move(str(thumb_src), str(thumb_dst))
-                moved_paths.append(thumb_src)
-                n += 1
+        # NOTE: the thumbnail (mod-image.png or whatever thumbnailPath names)
+        # is intentionally LEFT at Saved/Mods/<Mod>/. It's not a cook asset
+        # so it doesn't need to be in Content/Mods/. write_thumbnail() looks
+        # at multiple candidate locations and will find it at the saved-root
+        # to copy into Saved/Mods/<Mod>/thumbnail.png.
         ok(f"moved {n} files into Content/Mods/{s.mod_name}/")
         # Walk up from each moved-file's parent and remove now-empty
         # directories, stopping at saved_mod_folder. rmdir() only succeeds
