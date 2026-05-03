@@ -6,10 +6,10 @@ mod_workflow.py
 Interactive wizard that walks a Last Oasis mod from any starting state
 through Cook + Upload to Steam Workshop.
 
-This is the canonical migration tool. It supersedes the older
-migrate_mod_v2_to_v3.py and recover_mod_from_workshop.py, both of which
-implemented broken recipes that we eventually traced back to specific
-Modkit GC behaviour.
+This is the canonical migration tool. The recipe below was derived
+empirically across three real mods after several earlier approaches
+failed. See docs/modkit-guides/porting-a-mod-from-old-modkit.md for
+the failure-mode taxonomy that motivates each step.
 
 The recipe (proved working empirically on three real mods)
 --------------------------------------------------------
@@ -33,7 +33,9 @@ below sidesteps all of them:
      (Save Mod produces a *blank* v3 manifest from migrated mods,
      losing all of these. We have to write them ourselves.)
 
-  3. Thumbnail at Saved/Mods/<Mod>/thumbnail.png = copy of mod-image.png.
+  3. Thumbnail at Saved/Mods/<Mod>/thumbnail.png = copy of whatever
+     file the v2 manifest's `thumbnailPath` points at (commonly
+     `mod-image.png` but the field can name any image file).
 
   4. **All of the above is `chmod -w` (read-only) on disk.** Without
      this, the Modkit's load + Cook overwrite the manifest and wipe
@@ -518,7 +520,13 @@ def patch_manifest(s: State, assets_to_cook: OrderedDict, author: str) -> None:
     all_paths = list(assets_to_cook.keys())
     created = [p for p in all_paths if p.startswith(f"/Game/Mods/{s.mod_name}/")]
 
-    manifest = OrderedDict([
+    # Preserve thumbnailPath from the existing manifest, OR look it up
+    # from a backup (so re-runs of the wizard don't lose the value when
+    # patching successive times). The Modkit's v3 spec doesn't require
+    # this field but ignores unknown fields, so it's safe to keep.
+    thumbnail_path = existing.get("thumbnailPath") or find_thumbnail_path(s)
+
+    fields = [
         ("title", existing.get("title", s.mod_name)),
         ("description", existing.get("description", "")),
         ("author", existing.get("author") or author),
@@ -528,7 +536,11 @@ def patch_manifest(s: State, assets_to_cook: OrderedDict, author: str) -> None:
         ("active", True),
         ("folderName", s.mod_name),
         ("modDependencies", existing.get("modDependencies", [])),
-        ("assetsToCook", assets_to_cook),
+    ]
+    if thumbnail_path:
+        fields.append(("thumbnailPath", thumbnail_path))
+    fields.append(("assetsToCook", assets_to_cook))
+    manifest = OrderedDict(fields + [
         ("createdAssets", created),
         ("modifiedAssets", all_paths),
         ("deletedAssets", []),
@@ -555,16 +567,57 @@ def patch_manifest(s: State, assets_to_cook: OrderedDict, author: str) -> None:
 # ---------------------------------------------------------------------------
 
 
+def find_thumbnail_path(s: State) -> Optional[str]:
+    """Return the v2 manifest's `thumbnailPath` value (e.g. '/mod-image.png',
+    '/modpicture.jpg'). Looks first at the current on-disk manifest, then
+    falls back to any *_backup_*.zip at the modkit root."""
+    if s.manifest and s.manifest.get("thumbnailPath"):
+        return s.manifest["thumbnailPath"]
+    for pattern in (f"{s.mod_name}_workflow_backup_*.zip",
+                    f"{s.mod_name}_recovery_backup_*.zip",
+                    f"{s.mod_name}_v2_backup_*.zip",
+                    f"{s.mod_name}_assetmove_backup_*.zip"):
+        for backup in sorted(s.modkit_root.glob(pattern), reverse=True):
+            try:
+                with zipfile.ZipFile(backup) as zf:
+                    for name in zf.namelist():
+                        norm = name.replace("\\", "/")
+                        if norm.endswith(f"Saved/Mods/{s.mod_name}/modinfo.json"):
+                            data = json.loads(zf.read(name).decode("utf-8"))
+                            tp = data.get("thumbnailPath")
+                            if tp:
+                                return tp
+            except Exception:
+                continue
+    return None
+
+
 def write_thumbnail(s: State) -> bool:
-    src = s.content_mod_folder / "mod-image.png"
+    """Copy the mod's thumbnail image to Saved/Mods/<Mod>/thumbnail.png.
+
+    Source filename comes from the v2 manifest's `thumbnailPath` field
+    (the v3 manifest doesn't have this field, so we recover it from a
+    backup zip if needed). The Workshop UI uses thumbnail.png as the
+    item's actual thumbnail.
+    """
+    raw = find_thumbnail_path(s)
+    if not raw:
+        warn(f"no thumbnailPath in manifest - skipping thumbnail "
+             "(was the v2 manifest lost?)")
+        return False
+    # thumbnailPath is typically "/mod-image.png" - relative to the mod's
+    # Content/Mods/<Mod>/ root. Strip the leading slash.
+    rel = raw.lstrip("/").lstrip("\\")
+    src = s.content_mod_folder / rel
     if not src.is_file():
-        warn(f"no mod-image.png at {src} - skipping thumbnail")
+        warn(f"thumbnail file not found on disk: {src} "
+             f"(thumbnailPath={raw!r})")
         return False
     dst = s.saved_mod_folder / "thumbnail.png"
     if dst.exists():
         unlock_path(dst)
     shutil.copy2(str(src), str(dst))
-    ok(f"thumbnail.png written ({dst.stat().st_size:,} bytes)")
+    ok(f"thumbnail.png written from {rel} ({dst.stat().st_size:,} bytes)")
     return True
 
 
