@@ -37,10 +37,13 @@ below sidesteps all of them:
      file the v2 manifest's `thumbnailPath` points at (commonly
      `mod-image.png` but the field can name any image file).
 
-  4. **All of the above is `chmod -w` (read-only) on disk.** Without
-     this, the Modkit's load + Cook overwrite the manifest and wipe
-     the source. With it, the Modkit's writes silently fail and the
-     state we want survives.
+  4. **(Optional, --lock) chmod -w on the patched state.** The locks
+     protect against an accidental "Save Mod" click - Save Mod
+     regenerates a blank v3 manifest losing everything, and on a
+     locked manifest the write silently fails. Cook itself doesn't
+     overwrite anything, so the locks aren't strictly required if
+     you're careful to skip Save Mod. Default is unlocked (so you
+     can keep editing). Pass --lock as defense-in-depth.
 
   5. Other mods' folders under Content/Mods/ are removed *if* they
      are byte-identical to their Saved-side mirrors (avoids ghost
@@ -865,13 +868,15 @@ def main(argv: List[str]) -> int:
                         help="Mod folder name.")
     parser.add_argument("--author", default="",
                         help="Author name (used only if not already set in the manifest).")
-    parser.add_argument("--no-lock", action="store_true",
-                        help="Skip the read-only locking step. The recipe normally locks "
-                             "the manifest + source files so the Modkit's destructive "
-                             "overwrites silently fail. Without locking, opening the mod "
-                             "in the Modkit will likely wipe the staged state - the cook "
-                             "will probably ship an empty 238-byte .pak. Use only for "
-                             "experimenting / understanding what the locks protect against.")
+    parser.add_argument("--lock", action="store_true",
+                        help="Lock the patched manifest + staged source files read-only "
+                             "after prep. Default is unlocked - empirically, Cook reads "
+                             "the manifest cleanly and doesn't overwrite anything *as "
+                             "long as you skip Save Mod*. Use --lock as defense in depth: "
+                             "the read-only flag makes Save Mod's destructive overwrite "
+                             "silently fail, so an accidental click doesn't wipe the "
+                             "staged state. Locked files require a separate unlock step "
+                             "before you can edit them again.")
     args = parser.parse_args(argv)
 
     modkit_root = args.modkit.resolve()
@@ -961,14 +966,16 @@ def main(argv: List[str]) -> int:
     info("\nWriting thumbnail...")
     write_thumbnail(s)
 
-    if args.no_lock:
-        warn("Skipping read-only lock (--no-lock). The Modkit's load + Cook + "
-             "Save Mod will most likely wipe the staged state. Backup zip is "
-             "your fallback if it does.")
-    else:
-        info("\nLocking everything read-only...")
+    if args.lock:
+        info("\nLocking everything read-only (--lock)...")
         locked = lock_recipe_state(s, assets_to_cook)
         ok(f"locked {locked} file(s)")
+    else:
+        info("\nSkipping read-only lock (default). Cook in the Modkit reads "
+             "the manifest cleanly and shouldn't overwrite anything - BUT "
+             "DO NOT click Save Mod, it will regenerate the manifest as blank "
+             "and wipe your staged source. If you're worried about an "
+             "accidental click, re-run with --lock.")
 
     # Re-diagnose
     diagnose(s)
@@ -991,7 +998,11 @@ What to do in the Modkit:
   4. Verify Mod Manager -> Assets to Cook lists all {s.assets_to_cook_count}
      entries from the patched manifest.
   5. Mod Manager -> *Cook and Package Mod*.
-     DO NOT click "Save Mod" - it would try to overwrite the locked manifest.
+     *** DO NOT click "Save Mod" *** - it regenerates the v3 manifest
+     as blank (steamId=0, empty assetsToCook), and the next Cook would
+     ship an empty .pak. (If you used --lock, Save Mod's write
+     silently fails so it's harmless; without --lock, Save Mod is
+     destructive.)
   6. Wait for the cook batch script to finish. *** DO NOT close that
      batch window mid-cook *** or you'll lose the cook cache and the next
      cook will take hours.
@@ -1044,7 +1055,9 @@ What to do in the Modkit:
     # ============================================================
 
     section("Phase E: cleanup")
-    if confirm("Unlock all the read-only files now (so you can edit later)?"):
+    if not args.lock:
+        info("Skipping unlock prompt - nothing was locked (default mode).")
+    elif confirm("Unlock all the read-only files now (so you can edit later)?"):
         n = unlock_all(s, assets_to_cook)
         ok(f"unlocked {n} file(s)")
         info("Re-run the wizard before your next cook to re-stage and re-lock.")
