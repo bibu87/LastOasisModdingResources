@@ -36,9 +36,24 @@ python scripts/mod_workflow.py \
 | Flag | Effect |
 | --- | --- |
 | `--modkit <path>` | **Required.** Modkit install root (folder containing `Game/`). |
-| `--mod <name>` | **Required.** Mod folder name. |
+| `--mod <name>` | Mod folder name. **Required** unless `--workshop-id` is given. |
+| `--workshop-id <ID>` | Steam Workshop item ID. Wizard runs `steamcmd` to download the item first (anonymous login — works for public items), then proceeds as if `--mod` had been passed for the downloaded mod. Requires `steamcmd` installed locally (PATH lookup, common Windows locations, or `--steamcmd <path>`). |
+| `--steamcmd <path>` | Override path to the steamcmd binary. |
 | `--author <name>` | Author display name. Used only if not already set in the manifest. |
 | `--lock` | Optional defense-in-depth: `chmod -w` on the patched manifest and source files so an accidental Save Mod click can't overwrite them. **Default is unlocked** — empirically Cook reads the manifest cleanly and doesn't overwrite anything *as long as you skip Save Mod*. |
+
+### Workshop download example
+
+```
+python scripts/mod_workflow.py \
+    --modkit "D:/Program Files/Epic Games/LastOasisModkit" \
+    --workshop-id 3591280225 \
+    --author "yourname"
+```
+
+The wizard runs `steamcmd +force_install_dir <temp> +login anonymous +workshop_download_item 903950 <ID> +quit`, reads `folderName` from the downloaded `modinfo.json`, copies the files into `<modkit>/Game/Saved/Mods/<folderName>/`, then continues with the normal flow (which will classify the new state as `WORKSHOP_CACHED`).
+
+If the Workshop item is private/restricted and anonymous login fails, you'll need to subscribe via the Steam client (which makes the Modkit's own cache pick it up) and use `--mod <folderName>` instead.
 
 ### What it does
 

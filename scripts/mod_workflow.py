@@ -78,13 +78,19 @@ import json
 import os
 import shutil
 import stat
+import subprocess
 import sys
+import tempfile
 import time
 import zipfile
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
+
+
+# Steam app IDs for Last Oasis
+LO_APP_ID = "903950"        # Last Oasis on Steam (Workshop content uses this)
 
 
 # ---------------------------------------------------------------------------
@@ -868,6 +874,116 @@ def unlock_all(s: State, assets_to_cook: OrderedDict) -> int:
 
 
 # ---------------------------------------------------------------------------
+# Phase: download from Steam Workshop
+# ---------------------------------------------------------------------------
+
+
+def find_steamcmd(override: Optional[Path] = None) -> Optional[Path]:
+    """Locate the steamcmd binary. Tries the override first, then PATH,
+    then a few common Windows install locations."""
+    candidates: List[Path] = []
+    if override:
+        candidates.append(override)
+    # PATH lookup
+    on_path = shutil.which("steamcmd") or shutil.which("steamcmd.exe")
+    if on_path:
+        candidates.append(Path(on_path))
+    # Common Windows locations
+    if sys.platform == "win32":
+        for c in ("C:/SteamCMD/steamcmd.exe",
+                  "C:/Program Files/SteamCMD/steamcmd.exe",
+                  "C:/Steam/steamcmd.exe"):
+            candidates.append(Path(c))
+    for c in candidates:
+        if c.is_file():
+            return c
+    return None
+
+
+def download_workshop_item(steamcmd: Path, workshop_id: str, target_dir: Path) -> Path:
+    """Run steamcmd to download a Workshop item. Returns the path to the
+    directory containing the downloaded files."""
+    target_dir.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        str(steamcmd),
+        "+force_install_dir", str(target_dir),
+        "+login", "anonymous",
+        "+workshop_download_item", LO_APP_ID, workshop_id,
+        "+quit",
+    ]
+    info(f"Running steamcmd to download Workshop item {workshop_id}...")
+    info(f"  (this can take a minute or two depending on mod size)")
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("steamcmd timed out after 10 minutes")
+    if result.returncode != 0:
+        # steamcmd often returns non-zero even on success - check if files arrived
+        pass
+    download_dir = target_dir / "steamapps" / "workshop" / "content" / LO_APP_ID / workshop_id
+    if not download_dir.is_dir() or not any(download_dir.iterdir()):
+        # Genuine failure - print steamcmd's output for diagnosis
+        err("steamcmd did not produce a download. Output:")
+        for line in (result.stdout or "").splitlines()[-20:]:
+            print(f"    {line}")
+        for line in (result.stderr or "").splitlines()[-20:]:
+            print(f"    {line}", file=sys.stderr)
+        raise RuntimeError(
+            f"download failed - no files at {download_dir}. "
+            "Common causes: invalid Workshop ID, item is private/restricted "
+            "(needs --login <user> instead of anonymous), or no network."
+        )
+    ok(f"download complete: {download_dir}")
+    return download_dir
+
+
+def import_downloaded_workshop_item(download_dir: Path, modkit_root: Path) -> str:
+    """Copy the downloaded files into Saved/Mods/<folderName>/. Returns the
+    mod folder name (read from modinfo.json's folderName field)."""
+    # Find modinfo.json in the download
+    mi_path = None
+    for candidate in download_dir.rglob("modinfo.json"):
+        mi_path = candidate
+        break
+    if mi_path is None:
+        raise RuntimeError(
+            f"no modinfo.json found in download at {download_dir}. "
+            "This isn't a valid Last Oasis mod."
+        )
+    manifest = json.loads(mi_path.read_text(encoding="utf-8"))
+    folder_name = manifest.get("folderName")
+    if not folder_name:
+        raise RuntimeError(
+            f"modinfo.json at {mi_path} has no 'folderName' field - "
+            "can't determine where to put the mod."
+        )
+    saved_mod_folder = modkit_root / "Game" / "Saved" / "Mods" / folder_name
+    if saved_mod_folder.exists() and any(saved_mod_folder.iterdir()):
+        if not confirm(
+            f"Saved/Mods/{folder_name}/ already exists with content. "
+            "Overwrite the contents from the Workshop download?",
+            default_yes=False,
+        ):
+            raise RuntimeError("aborted - existing mod folder kept")
+    saved_mod_folder.mkdir(parents=True, exist_ok=True)
+    # Copy every file from the download into Saved/Mods/<folderName>/
+    n = 0
+    for src in download_dir.rglob("*"):
+        if not src.is_file():
+            continue
+        rel = src.relative_to(download_dir)
+        dst = saved_mod_folder / rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if dst.exists():
+            unlock_path(dst)
+        shutil.copy2(str(src), str(dst))
+        n += 1
+    ok(f"imported {n} file(s) -> Saved/Mods/{folder_name}/  "
+       f"(folderName from manifest: {folder_name!r})")
+    return folder_name
+
+
+# ---------------------------------------------------------------------------
 # Main flow
 # ---------------------------------------------------------------------------
 
@@ -879,8 +995,18 @@ def main(argv: List[str]) -> int:
     )
     parser.add_argument("--modkit", required=True, type=Path,
                         help="Modkit install root (folder containing 'Game/').")
-    parser.add_argument("--mod", required=True,
-                        help="Mod folder name.")
+    # --mod and --workshop-id are mutually-exclusive ways to identify the mod
+    mod_id = parser.add_mutually_exclusive_group(required=True)
+    mod_id.add_argument("--mod",
+                        help="Mod folder name (the folder under Game/Saved/Mods/).")
+    mod_id.add_argument("--workshop-id",
+                        help="Steam Workshop item ID. Wizard will run steamcmd to "
+                             "download the item first (anonymous login - works for "
+                             "public items), then proceed as if --mod had been "
+                             "passed for the downloaded mod.")
+    parser.add_argument("--steamcmd", type=Path,
+                        help="Path to the steamcmd binary. Default: PATH lookup, "
+                             "then C:/SteamCMD/steamcmd.exe and a few common locations.")
     parser.add_argument("--author", default="",
                         help="Author name (used only if not already set in the manifest).")
     parser.add_argument("--lock", action="store_true",
@@ -899,7 +1025,26 @@ def main(argv: List[str]) -> int:
         err(f"--modkit doesn't look like a Modkit install: {modkit_root}")
         return 2
 
-    s = State(modkit_root=modkit_root, mod_name=args.mod)
+    # Resolve mod name: either --mod directly, or download via --workshop-id first
+    mod_name = args.mod
+    if args.workshop_id:
+        section(f"Downloading Workshop item {args.workshop_id}")
+        steamcmd = find_steamcmd(args.steamcmd)
+        if steamcmd is None:
+            err("steamcmd not found. Install from "
+                "https://developer.valvesoftware.com/wiki/SteamCMD or pass "
+                "--steamcmd <path>.")
+            return 2
+        info(f"Using steamcmd: {steamcmd}")
+        try:
+            with tempfile.TemporaryDirectory(prefix="lo_modkit_dl_") as tmp:
+                download_dir = download_workshop_item(steamcmd, args.workshop_id, Path(tmp))
+                mod_name = import_downloaded_workshop_item(download_dir, modkit_root)
+        except RuntimeError as e:
+            err(str(e))
+            return 1
+
+    s = State(modkit_root=modkit_root, mod_name=mod_name)
     diagnose(s)
     print_diagnosis(s)
     classification = classify(s)
