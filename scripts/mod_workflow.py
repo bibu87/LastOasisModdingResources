@@ -1166,7 +1166,9 @@ What to do in the Modkit:
   6. Wait for the cook batch script to finish. *** DO NOT close that
      batch window mid-cook *** or you'll lose the cook cache and the next
      cook will take hours.
-  7. Close the Modkit.
+  7. Leave the Modkit open - you'll use it again for Phase D (Upload).
+     The wizard's file ops in between don't conflict with anything the
+     Modkit is doing.
 
 The cook should produce Pak/{s.mod_name}.pak (kilobytes to megabytes,
 NOT 238 bytes - that would mean an empty cook).
@@ -1197,14 +1199,15 @@ NOT 238 bytes - that would mean an empty cook).
 
     section("Phase D: Upload to Workshop")
     print(f"""
-What to do in the Modkit:
+In the Modkit (still open from Phase B, with '{s.mod_name}' selected):
 
-  1. Launch the Modkit (or keep it open from before - either is fine).
-  2. Select '{s.mod_name}'.
-  3. Mod Manager -> *Upload to Workshop*.
-  4. The upload pushes to Workshop item {s.manifest['steamId']}.
-  5. Verify on the Workshop page (steamcommunity.com/sharedfiles/...)
+  1. Mod Manager -> *Upload to Workshop*.
+  2. The upload pushes to Workshop item {s.manifest['steamId']}.
+  3. Verify on the Workshop page (steamcommunity.com/sharedfiles/...)
      that the "Updated" timestamp is current.
+
+(If you closed the Modkit since Phase B, just relaunch and select
+'{s.mod_name}' again before clicking Upload.)
 """)
     if not confirm("Upload finished?"):
         info("Stopping here. The Upload/ payload remains; you can upload later.")
