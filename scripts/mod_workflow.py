@@ -492,10 +492,14 @@ def stage_source(s: State, assets_to_cook: OrderedDict) -> None:
         # (some users keep their mod source in a git repo at the Saved-mod-folder
         # root rather than the standard Content/Mods/<Mod>/ location). Resolve
         # each /Game/Mods/<Mod>/<x> path in assetsToCook to its on-disk source
-        # there, and copy to Content/Mods/<Mod>/<x>.uasset.
-        info(f"Restoring source from Saved/Mods/{s.mod_name}/ root -> Content/Mods/{s.mod_name}/")
+        # there and MOVE (not copy) to Content/Mods/<Mod>/<x>.uasset. Removing
+        # the originals avoids confusion - leaving three copies of every asset
+        # (alternate-root + Content/ + Assets/ mirror) makes it easy to edit
+        # the wrong one later.
+        info(f"Moving source from Saved/Mods/{s.mod_name}/ root -> Content/Mods/{s.mod_name}/")
         unlock_tree(s.content_mod_folder)
         n = 0
+        moved_paths: List[Path] = []
         prefix = f"/Game/Mods/{s.mod_name}/"
         for vp in assets_to_cook.keys():
             if not vp.startswith(prefix):
@@ -508,12 +512,14 @@ def stage_source(s: State, assets_to_cook: OrderedDict) -> None:
                     dst.parent.mkdir(parents=True, exist_ok=True)
                     if dst.exists():
                         unlock_path(dst)
-                    shutil.copy2(str(src), str(dst))
+                    unlock_path(src)
+                    shutil.move(str(src), str(dst))
+                    moved_paths.append(src)
                     n += 1
                     break
             else:
                 warn(f"asset not found at Saved/Mods/{s.mod_name}/ root: {vp}")
-        # The thumbnail (if it lives at the saved-root) - copy too so write_thumbnail finds it.
+        # The thumbnail (per thumbnailPath) is also moved to Content/.
         thumb_rel = (s.manifest or {}).get("thumbnailPath", "").lstrip("/").lstrip("\\")
         if thumb_rel:
             thumb_src = s.saved_mod_folder / thumb_rel
@@ -522,9 +528,27 @@ def stage_source(s: State, assets_to_cook: OrderedDict) -> None:
                 thumb_dst.parent.mkdir(parents=True, exist_ok=True)
                 if thumb_dst.exists():
                     unlock_path(thumb_dst)
-                shutil.copy2(str(thumb_src), str(thumb_dst))
+                unlock_path(thumb_src)
+                shutil.move(str(thumb_src), str(thumb_dst))
+                moved_paths.append(thumb_src)
                 n += 1
-        ok(f"restored {n} files into Content/Mods/{s.mod_name}/")
+        ok(f"moved {n} files into Content/Mods/{s.mod_name}/")
+        # Walk up from each moved-file's parent and remove now-empty
+        # directories, stopping at saved_mod_folder. rmdir() only succeeds
+        # on empty dirs so we won't accidentally delete folders that still
+        # have other files (.psd, README, .git, etc.).
+        cleaned = 0
+        for moved in moved_paths:
+            cur = moved.parent
+            while cur != s.saved_mod_folder and cur.is_dir():
+                try:
+                    cur.rmdir()
+                    cleaned += 1
+                except OSError:
+                    break
+                cur = cur.parent
+        if cleaned:
+            ok(f"removed {cleaned} now-empty directories under Saved/Mods/{s.mod_name}/")
     elif s.workshop_zip is not None:
         info(f"Extracting {s.workshop_zip.name} into Content/...")
         unlock_tree(s.content_root / "Mist")
