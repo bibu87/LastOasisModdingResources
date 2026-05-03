@@ -382,7 +382,6 @@ def force_delete_kept_mod(km: KeptMod) -> None:
     decided to keep. Caller is responsible for prompting the user first."""
     unlock_tree(km.mod_dir)
     shutil.rmtree(km.mod_dir)
-    return deleted, kept
 
 
 # ---------------------------------------------------------------------------
