@@ -211,6 +211,11 @@ CLASS_DESCRIPTIONS = {
     "ALREADY_DONE":
         "Mod has a fully populated v3 manifest with assetHashes (like a "
         "modkit-authored mod). Skip prep, no migration needed.",
+    "SOURCE_AT_SAVED_ROOT":
+        "Alternate layout: source files (.uasset/.umap) live at "
+        "Saved/Mods/<Mod>/<x>.uasset, not under Content/Mods/ or Assets/. "
+        "Wizard will copy them into Content/Mods/<Mod>/ AND mirror to "
+        "Saved/.../Assets/, patch the manifest, and lock read-only.",
     "UNKNOWN":
         "Could not classify - manual inspection needed.",
 }
@@ -227,11 +232,18 @@ def classify(s: State) -> str:
     if (has_v3_with_data and is_locked
             and s.saved_assets_count > 0 and s.content_assets_count > 0):
         return "RECIPE_PREPPED"
-    if (s.manifest_kit_version in (2, 3)
-            and (s.workshop_zip or s.assets_to_cook_count > 0)):
-        # Anything not fully prepped but with enough info to prep from
-        return "PARTIAL_PREPPED" if s.saved_assets_count or s.content_assets_count \
-                                 else "WORKSHOP_CACHED"
+    if s.manifest_kit_version in (2, 3) and s.assets_to_cook_count > 0:
+        if s.saved_assets_count or s.content_assets_count:
+            return "PARTIAL_PREPPED"
+        # Source not at standard locations - check the alternate layout
+        # (some mods commit source at Saved/Mods/<Mod>/ root, e.g. via git).
+        atc = (s.manifest or {}).get("assetsToCook") or {}
+        if has_source_at_saved_root(s, atc):
+            return "SOURCE_AT_SAVED_ROOT"
+        if s.workshop_zip:
+            return "WORKSHOP_CACHED"
+    if s.manifest_kit_version in (2, 3) and s.workshop_zip:
+        return "WORKSHOP_CACHED"
     return "UNKNOWN"
 
 
@@ -384,19 +396,42 @@ def get_v2_asset_paths(s: State) -> OrderedDict:
     )
 
 
+def has_source_at_saved_root(s: State, assets_to_cook: OrderedDict) -> bool:
+    """Return True if at least one /Game/Mods/<Mod>/<x> path in assetsToCook
+    has its source file at Saved/Mods/<Mod>/<x>.{uasset,umap} - the
+    'alternate layout' some mods use (source committed at the mod folder
+    root, not under Content/Mods/ or Assets/)."""
+    if not s.saved_mod_folder.is_dir():
+        return False
+    prefix = f"/Game/Mods/{s.mod_name}/"
+    for vp in assets_to_cook.keys():
+        if not vp.startswith(prefix):
+            continue
+        rel_no_ext = vp[len(prefix):]
+        for ext in (".uasset", ".umap"):
+            if (s.saved_mod_folder / (rel_no_ext + ext)).is_file():
+                return True
+    return False
+
+
 def stage_source(s: State, assets_to_cook: OrderedDict) -> None:
     """Place source files at BOTH Content/Mods/<Mod>/<...> AND
     Saved/Mods/<Mod>/Assets/Mods/<Mod>/<...>. Handle Mist overrides too.
-    Source for content: prefer existing files at Content/Mods/<Mod>/,
-    fall back to extracting from the Workshop zip."""
 
-    # Source priority (most-current first):
-    #   1. Saved/.../Assets/Mods/<Mod>/  (if present - reflects any prior cook prep)
-    #   2. Content/Mods/<Mod>/           (mirror, should match Assets/)
-    #   3. Workshop zip                  (original published bytes)
+    Source priority (most-current first):
+      1. Saved/.../Assets/Mods/<Mod>/  (prior cook prep)
+      2. Content/Mods/<Mod>/           (standard v2 layout)
+      3. Saved/Mods/<Mod>/<x>.uasset   (alternate layout: source at mod root)
+      4. Workshop zip                  (original published bytes)
+    """
+
     have_content = s.content_mod_folder.is_dir() and s.content_assets_count > 0
     mods_in_assets = s.saved_assets_root / "Mods" / s.mod_name
     have_assets = mods_in_assets.is_dir() and any(p.is_file() for p in mods_in_assets.rglob("*"))
+    have_saved_root = (
+        not have_content and not have_assets
+        and has_source_at_saved_root(s, assets_to_cook)
+    )
 
     if have_content:
         info(f"Using existing files at Content/Mods/{s.mod_name}/")
@@ -428,6 +463,44 @@ def stage_source(s: State, assets_to_cook: OrderedDict) -> None:
                 shutil.copy2(str(src), str(dst))
                 n += 1
         ok(f"restored {n} files into Content/")
+    elif have_saved_root:
+        # Alternate layout: source files live at Saved/Mods/<Mod>/<x>.uasset
+        # (some users keep their mod source in a git repo at the Saved-mod-folder
+        # root rather than the standard Content/Mods/<Mod>/ location). Resolve
+        # each /Game/Mods/<Mod>/<x> path in assetsToCook to its on-disk source
+        # there, and copy to Content/Mods/<Mod>/<x>.uasset.
+        info(f"Restoring source from Saved/Mods/{s.mod_name}/ root -> Content/Mods/{s.mod_name}/")
+        unlock_tree(s.content_mod_folder)
+        n = 0
+        prefix = f"/Game/Mods/{s.mod_name}/"
+        for vp in assets_to_cook.keys():
+            if not vp.startswith(prefix):
+                continue
+            rel_no_ext = vp[len(prefix):]
+            for ext in (".uasset", ".umap"):
+                src = s.saved_mod_folder / (rel_no_ext + ext)
+                if src.is_file():
+                    dst = s.content_mod_folder / (rel_no_ext + ext)
+                    dst.parent.mkdir(parents=True, exist_ok=True)
+                    if dst.exists():
+                        unlock_path(dst)
+                    shutil.copy2(str(src), str(dst))
+                    n += 1
+                    break
+            else:
+                warn(f"asset not found at Saved/Mods/{s.mod_name}/ root: {vp}")
+        # The thumbnail (if it lives at the saved-root) - copy too so write_thumbnail finds it.
+        thumb_rel = (s.manifest or {}).get("thumbnailPath", "").lstrip("/").lstrip("\\")
+        if thumb_rel:
+            thumb_src = s.saved_mod_folder / thumb_rel
+            if thumb_src.is_file():
+                thumb_dst = s.content_mod_folder / thumb_rel
+                thumb_dst.parent.mkdir(parents=True, exist_ok=True)
+                if thumb_dst.exists():
+                    unlock_path(thumb_dst)
+                shutil.copy2(str(thumb_src), str(thumb_dst))
+                n += 1
+        ok(f"restored {n} files into Content/Mods/{s.mod_name}/")
     elif s.workshop_zip is not None:
         info(f"Extracting {s.workshop_zip.name} into Content/...")
         unlock_tree(s.content_root / "Mist")
@@ -448,9 +521,11 @@ def stage_source(s: State, assets_to_cook: OrderedDict) -> None:
                     shutil.copyfileobj(src, out)
     else:
         raise RuntimeError(
-            f"No source found: Content/Mods/{s.mod_name}/ is empty, "
-            f"Saved/.../Assets/Mods/{s.mod_name}/ is empty, AND "
-            f"there is no Workshop zip in Saved/Mods/{s.mod_name}/."
+            f"No source found for {s.mod_name}. Looked at: "
+            f"Content/Mods/{s.mod_name}/, "
+            f"Saved/Mods/{s.mod_name}/Assets/Mods/{s.mod_name}/, "
+            f"Saved/Mods/{s.mod_name}/<x>.uasset (alternate root layout), "
+            f"and the Workshop zip - all empty/missing."
         )
 
     # Re-diagnose after the source restore so subsequent steps see fresh counts
@@ -608,16 +683,24 @@ def write_thumbnail(s: State) -> bool:
     # thumbnailPath is typically "/mod-image.png" - relative to the mod's
     # Content/Mods/<Mod>/ root. Strip the leading slash.
     rel = raw.lstrip("/").lstrip("\\")
-    src = s.content_mod_folder / rel
-    if not src.is_file():
-        warn(f"thumbnail file not found on disk: {src} "
-             f"(thumbnailPath={raw!r})")
+    # Look at multiple candidate locations - mods using the alternate
+    # root layout keep the thumbnail at Saved/Mods/<Mod>/<file>.
+    candidates = [
+        s.content_mod_folder / rel,
+        s.saved_mod_folder / rel,
+        s.saved_assets_root / "Mods" / s.mod_name / rel,
+    ]
+    src = next((p for p in candidates if p.is_file()), None)
+    if src is None:
+        warn(f"thumbnail file not found on disk (thumbnailPath={raw!r}). "
+             f"Looked at: {[str(p) for p in candidates]}")
         return False
     dst = s.saved_mod_folder / "thumbnail.png"
     if dst.exists():
         unlock_path(dst)
     shutil.copy2(str(src), str(dst))
-    ok(f"thumbnail.png written from {rel} ({dst.stat().st_size:,} bytes)")
+    ok(f"thumbnail.png written from {src.relative_to(s.modkit_root)} "
+       f"({dst.stat().st_size:,} bytes)")
     return True
 
 
