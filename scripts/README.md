@@ -6,95 +6,56 @@ For editor-side scripts (Python that runs inside the Modkit), see [`modkit/`](mo
 
 ## At a glance
 
-| Script | Purpose | Default mode |
-| --- | --- | --- |
-| [`migrate_mod_v2_to_v3.py`](migrate_mod_v2_to_v3.py) | Stage an existing v2 mod (assets at `Content/Mods/<Mod>/`) so the new Modkit can find and edit it. | dry-run (`--apply` to act) |
-| [`recover_mod_from_workshop.py`](recover_mod_from_workshop.py) | Recover a Workshop-cached mod (zip at `Saved/Mods/<Mod>/<ID>.zip`) into editable form. | dry-run (`--apply` to act) |
-
-Both scripts:
-- Default to dry-run; require explicit `--apply` to touch files.
-- Create a timestamped zip backup at the modkit root before any change.
-- Refuse to overwrite existing target state without `--force`.
+| Script | Purpose |
+| --- | --- |
+| [`mod_workflow.py`](mod_workflow.py) | Interactive wizard that walks a Last Oasis mod from any starting state through Cook + Upload to Steam Workshop. The canonical migration tool. |
 
 ---
 
-## `migrate_mod_v2_to_v3.py`
+## `mod_workflow.py`
 
-You have an existing v2 mod sitting at `Content/Mods/<Mod>/` (your own work, an old copy, etc.) and want to use it in the new Modkit. The Modkit's mod-selection screen scans `Saved/Mods/<Mod>/modinfo.json` — so the only thing missing is the manifest at the right place.
-
-This script **moves `modinfo.json` from `Content/Mods/<Mod>/` to `Saved/Mods/<Mod>/`** and stops. Assets stay where they are. The schema stays as v2. The actual v3 conversion happens inside the Modkit when you click **Mod Manager → Save Mod** (which is the only safe way to populate the v3 asset-list fields without tripping the Modkit's GC).
+Migrating a v2 mod into the new Modkit involves several cooperating constraints — the Modkit's GC wipes assets it doesn't recognise, Save Mod regenerates a blank manifest, the cook step doesn't auto-stage to `Upload/`. The wizard handles all of that, pausing for the steps that have to happen inside the Modkit (Cook, Upload) and verifying after each.
 
 ```
-# Preview (no changes)
-python scripts/migrate_mod_v2_to_v3.py \
+python scripts/mod_workflow.py \
     --modkit "D:/Program Files/Epic Games/LastOasisModkit" \
-    --mod MyTestMod
-
-# Do it
-python scripts/migrate_mod_v2_to_v3.py \
-    --modkit "..." --mod MyTestMod --apply
+    --mod BetterRupuSling \
+    --author "yourname"
 ```
+
+**Auto-detects starting state**: Workshop-cached zip / partially prepped / fully prepped / freshly authored in Modkit. Runs only the steps actually needed.
 
 | Flag | Effect |
 | --- | --- |
 | `--modkit <path>` | **Required.** Modkit install root (folder containing `Game/`). |
 | `--mod <name>` | **Required.** Mod folder name. |
-| `--apply` | Actually perform the move. Default is dry-run. |
-| `--force` | Allow overwriting an existing `Saved/Mods/<Mod>/modinfo.json` and removing a leftover `Saved/Mods/<Mod>/Assets/`. |
+| `--author <name>` | Author display name. Used only if not already set in the manifest. |
 
-Backup zip: `<modkit>/<Mod>_v2_backup_<timestamp>.zip`.
+### What it does
 
-Full guide: [docs/modkit-guides/porting-a-mod-from-old-modkit.md](../docs/modkit-guides/porting-a-mod-from-old-modkit.md#automating-with-the-migration-script).
+1. **Diagnose & plan** — classifies your mod's current state, prints what it'll do, asks for confirmation.
+2. **Backup** — zips your current mod state to `<modkit>/<Mod>_workflow_backup_<timestamp>.zip`.
+3. **Cleanup other Content/Mods/ folders** — byte-compares each to its `Saved/.../Assets/` mirror, deletes only those that are 100% identical (avoids cross-mod ghost entries in the next Cook).
+4. **Stage source files** at BOTH `Content/Mods/<Mod>/` and `Saved/Mods/<Mod>/Assets/Mods/<Mod>/` (Mist game-asset overrides go at both `Content/Mist/` and `Saved/.../Assets/Mist/`).
+5. **Patch the v3 manifest** with `steamId`, `author`, `active: true`, populated `assetsToCook` / `createdAssets` / `modifiedAssets` / `referencingAssets`.
+6. **Write `thumbnail.png`** at `Saved/Mods/<Mod>/` from the mod's `mod-image.png`.
+7. **`chmod -w`** on every file written. Read-only blocks the Modkit's destructive overwrite attempts (manifest regen, asset cleanup) silently.
+8. **Pauses for Cook in the Modkit.** Tells you exactly what to click — including *don't* click Save Mod (it would try to overwrite the locked manifest).
+9. **Verifies cook output** — checks `Pak/<Mod>.pak` is a reasonable size (not 238 bytes, which means an empty cook).
+10. **Builds the Upload payload** by hand — `Upload/<steamId>.{pak,sig,zip}` + manifest copy. The source zip mirrors the original Workshop zip's layout.
+11. **Pauses for Upload to Workshop in the Modkit.**
+12. **Optionally `chmod +w`** everything afterwards so you can edit later.
 
----
+### Recovery
 
-## `recover_mod_from_workshop.py`
+The wizard makes a backup zip before any destructive action. If anything looks wrong:
 
-When you subscribe to a Workshop mod, the Modkit caches it at `<modkit>/Game/Saved/Mods/<Mod>/` as `<WORKSHOP_ID>.zip` (source assets) + `.pak` (cooked) + `.sig` + `modinfo.json` (v2). You can see it in the selection screen but can't edit it — the assets are still inside the zip.
+1. Close the Modkit.
+2. Unzip `<modkit>/<Mod>_workflow_backup_<timestamp>.zip` back into the modkit root.
+3. Re-run the wizard — it'll re-diagnose and pick up from the right state.
 
-This script **extracts the zip into `Game/Content/`** (entries already start with `Content/...`, so they land at `Content/Mods/<Mod>/...` and `Content/Mist/...` for any overridden game assets). The v2 manifest at `Saved/Mods/<Mod>/modinfo.json` is **left in place** — that's where the Modkit looks for the mod entry.
+If your source files have been wiped from disk entirely (e.g., the Modkit's GC fired before the wizard could lock things), the original Workshop zip at `Saved/Mods/<Mod>/<workshop-id>.zip` is the source of truth — the wizard re-extracts from it automatically when nothing else is available.
 
-```
-# Preview, all auto-discovered mods
-python scripts/recover_mod_from_workshop.py \
-    --modkit "D:/Program Files/Epic Games/LastOasisModkit"
+### Full porting guide
 
-# Recover a single mod
-python scripts/recover_mod_from_workshop.py \
-    --modkit "..." --mod BetterRupuSling --apply
-
-# Recover everything + remove the now-redundant cache files
-python scripts/recover_mod_from_workshop.py \
-    --modkit "..." --apply --remove-workshop-cache
-```
-
-| Flag | Effect |
-| --- | --- |
-| `--modkit <path>` | **Required.** Modkit install root. |
-| `--mod <name>` | Process one mod. Omit to auto-discover and process all. |
-| `--apply` | Actually extract. Default is dry-run. |
-| `--force` | Allow overwriting an existing `Content/Mods/<Mod>/` or removing a leftover `Saved/Mods/<Mod>/Assets/`. |
-| `--remove-workshop-cache` | After extraction, delete the `.zip`/`.pak`/`.sig` cache files. (Manifest stays — without it, the Modkit can't find the mod.) |
-
-Zipslip-protected. Post-extraction-verifies file sizes before any cleanup.
-
-Backup zip: `<modkit>/<Mod>_recovery_backup_<timestamp>.zip`.
-
-Full guide: [docs/modkit-guides/porting-a-mod-from-old-modkit.md](../docs/modkit-guides/porting-a-mod-from-old-modkit.md#automating-recovery-from-workshop-downloads).
-
----
-
-## After either script: open the Modkit
-
-1. Each recovered/staged mod appears in the selection screen.
-2. Select it. Edit if you want.
-3. **Mod Manager → Save Mod** — this is what migrates the mod to v3 properly (populating `createdAssets` / `modifiedAssets` / `assetTree` / `assetHashes`, then atomically moving assets into `Saved/Mods/<Mod>/Assets/` with everything flagged correctly).
-4. Cook & test against a local modded server before re-uploading.
-
-## When to use which?
-
-| You have… | Use |
-| --- | --- |
-| A v2 mod source on disk under `Content/Mods/<Mod>/` (assets + manifest) | [`migrate_mod_v2_to_v3.py`](migrate_mod_v2_to_v3.py) |
-| A subscribed Workshop mod cached under `Saved/Mods/<Mod>/` (zip + manifest) | [`recover_mod_from_workshop.py`](recover_mod_from_workshop.py) |
-| Already in v3 layout, want to re-cook / re-publish | Neither — use the Modkit's Mod Manager directly. |
+For the why behind the recipe (Modkit GC, Save Mod regenerating blank manifest, etc.), and the manual-process reference, see [docs/modkit-guides/porting-a-mod-from-old-modkit.md](../docs/modkit-guides/porting-a-mod-from-old-modkit.md#automating-with-mod_workflowpy).

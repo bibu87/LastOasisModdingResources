@@ -3,3 +3,7 @@
 
 # Local unzipped copy of llm/claude/claude-skill.zip
 llm/claude/extracted/
+
+# Python bytecode cache
+__pycache__/
+*.pyc

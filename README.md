@@ -71,7 +71,7 @@ Each folder has its own README with details. The summary below is just a pointer
 | --- | --- | --- |
 | [`data/`](data/) | Extracted JSON dumps of the Modkit's Blueprints, Widgets, and recipes. | [`data/README.md`](data/README.md) |
 | [`docs/`](docs/) | Modkit Python scripting guide, MyRealm configuration reference, plus expanded variants of the five official Donkey Crew guides under [`docs/modkit-guides/`](docs/modkit-guides/). | [`docs/README.md`](docs/README.md) |
-| [`scripts/`](scripts/) | Host-side Python scripts: stage a v2 mod for the new Modkit, recover a Workshop-cached mod into editable form. Both default to dry-run. | [`scripts/README.md`](scripts/README.md) |
+| [`scripts/`](scripts/) | Interactive wizard ([`mod_workflow.py`](scripts/mod_workflow.py)) that walks a Last Oasis mod from any starting state through Cook + Upload to Steam Workshop. | [`scripts/README.md`](scripts/README.md) |
 | [`scripts/modkit/`](scripts/modkit/) | Editor-side Python that runs inside the Modkit's UE 4.25 editor — walks the Asset Registry to produce the dumps in [`data/`](data/). | [`scripts/modkit/README.md`](scripts/modkit/README.md) |
 | [`tools/`](tools/) | Self-contained offline HTML viewers for the recipe data. Open in any browser, no build step. | [`tools/README.md`](tools/README.md) |
 | [`llm/`](llm/) | Drop-in prompts that pre-load an AI assistant with Modkit knowledge. Claude Skill bundle and a portable system prompt for any other LLM. | [`llm/README.md`](llm/README.md) |
