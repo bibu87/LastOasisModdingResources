@@ -218,6 +218,7 @@ If everything looks good, then upload from Mod Manager. **Bump `version.Minor` (
 - **Editor "restores" your assets back to vanilla on next boot.** You forgot to *Save Mod* after resaving the assets. The ModKit garbage-collects anything not flagged `ModifiedByModkit`.
 - **Cook silently strips assets you expect.** Check `assetsToCook` — it's the canonical "what gets shipped" list. If an asset isn't in there, it doesn't go into the `.pak`, regardless of whether it exists on disk.
 - **Workshop subscribers get an old version after you re-upload.** Increment `version` in `modinfo.json`. Steam compares versions to decide whether to pull the update.
+- **External edits to `Content/Mods/<Mod>/<file>.uasset` get reverted on next editor launch.** The Modkit syncs `Saved/Mods/<Mod>/Assets/...` → `Content/Mods/<Mod>/...` on load — Saved-side is the source of truth. Any external edit (binary patcher, hex editor, hand-copied file from a workshop pak, etc.) has to touch **both** locations or the next editor boot overwrites your work. Same rule applies to overrides of stock game assets: edit both `Content/Mist/<rel>` and `Saved/Mods/<Mod>/Assets/Mist/<rel>`. Also: close the editor *before* editing — a running editor will write its stale in-memory copy back over your patch on close. (See [`scripts/uasset/`](../../scripts/uasset/) for one common case where this matters: recovering assets damaged by upstream C++ renames.)
 
 ---
 
