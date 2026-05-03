@@ -315,13 +315,22 @@ def make_backup(s: State) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def cleanup_other_content_mods(s: State) -> Tuple[List[str], List[str]]:
+@dataclass
+class KeptMod:
+    name: str
+    mod_dir: Path
+    reason: str
+    only_in_content: List[Path] = field(default_factory=list)
+    differs: List[Path] = field(default_factory=list)
+
+
+def cleanup_other_content_mods(s: State) -> Tuple[List[str], List[KeptMod]]:
     """For every <other_mod> folder under Content/Mods/ (except this one):
        compare its files byte-for-byte to Saved/Mods/<other_mod>/Assets/Mods/<other_mod>/.
        If 100% identical, delete the Content/-side folder.
-       Returns (deleted, kept_with_reason)."""
-    deleted = []
-    kept = []
+       Returns (deleted_names, kept_with_details)."""
+    deleted: List[str] = []
+    kept: List[KeptMod] = []
     content_mods = s.content_root / "Mods"
     if not content_mods.is_dir():
         return deleted, kept
@@ -333,9 +342,11 @@ def cleanup_other_content_mods(s: State) -> Tuple[List[str], List[str]]:
             continue
         mirror = s.game_root / "Saved" / "Mods" / mod_dir.name / "Assets" / "Mods" / mod_dir.name
         if not mirror.is_dir():
-            kept.append(f"{mod_dir.name} (no mirror at Saved/.../Assets/Mods/{mod_dir.name}/)")
+            kept.append(KeptMod(
+                name=mod_dir.name, mod_dir=mod_dir,
+                reason=f"no mirror at Saved/.../Assets/Mods/{mod_dir.name}/"
+            ))
             continue
-        # Byte-compare
         content_files = {p.relative_to(mod_dir): p
                          for p in mod_dir.rglob("*") if p.is_file()}
         mirror_files = {p.relative_to(mirror): p
@@ -349,15 +360,25 @@ def cleanup_other_content_mods(s: State) -> Tuple[List[str], List[str]]:
             if src.stat().st_size != dst.stat().st_size or file_sha1(src) != file_sha1(dst):
                 differs.append(rel)
         if only_in_content or differs:
-            kept.append(
-                f"{mod_dir.name} (would lose {len(only_in_content)} unique + "
-                f"{len(differs)} modified file(s))"
-            )
+            kept.append(KeptMod(
+                name=mod_dir.name, mod_dir=mod_dir,
+                reason=f"{len(only_in_content)} unique + {len(differs)} modified file(s)",
+                only_in_content=only_in_content,
+                differs=differs,
+            ))
             continue
         # Safe to delete
-        unlock_tree(mod_dir)  # files may be read-only from prior wizard runs
+        unlock_tree(mod_dir)
         shutil.rmtree(mod_dir)
         deleted.append(mod_dir.name)
+    return deleted, kept
+
+
+def force_delete_kept_mod(km: KeptMod) -> None:
+    """Force-delete a Content/Mods/<other_mod>/ folder that the safety check
+    decided to keep. Caller is responsible for prompting the user first."""
+    unlock_tree(km.mod_dir)
+    shutil.rmtree(km.mod_dir)
     return deleted, kept
 
 
@@ -900,8 +921,35 @@ def main(argv: List[str]) -> int:
     deleted, kept = cleanup_other_content_mods(s)
     if deleted:
         ok(f"deleted {len(deleted)} verified-safe folder(s): {', '.join(deleted)}")
-    for note in kept:
-        warn(f"kept: {note}")
+
+    # For folders the safety check kept, show the actual differences and
+    # prompt for force-deletion. The Modkit's load step often deletes these
+    # itself, but only AFTER UE's asset registry has cached them - which
+    # leaves stale entries in the Content Browser. Force-deleting now
+    # avoids that.
+    for km in kept:
+        warn(f"kept: {km.name} ({km.reason})")
+        if km.only_in_content:
+            info(f"   files only in Content/ (would be lost):")
+            for r in km.only_in_content[:10]:
+                info(f"     - {r}")
+            if len(km.only_in_content) > 10:
+                info(f"     ... and {len(km.only_in_content) - 10} more")
+        if km.differs:
+            info(f"   files that differ from mirror (would lose changes):")
+            for r in km.differs[:10]:
+                info(f"     - {r}")
+            if len(km.differs) > 10:
+                info(f"     ... and {len(km.differs) - 10} more")
+        info(f"   (these files commonly come from a prior cook of {km.name} - "
+             "the Modkit emits cooked metadata into Content/Mods/ that's "
+             "not part of the source mirror at Saved/.../Assets/.)")
+        if confirm(f"Force-delete Content/Mods/{km.name}/ anyway?", default_yes=False):
+            force_delete_kept_mod(km)
+            ok(f"force-deleted {km.name}")
+        else:
+            info(f"keeping {km.name}; the Modkit may delete it on load and "
+                 "leave stale entries in the Content Browser.")
 
     # Stage, patch, thumbnail, lock
     info("\nStaging source...")
