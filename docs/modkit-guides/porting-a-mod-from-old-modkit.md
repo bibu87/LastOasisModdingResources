@@ -9,7 +9,7 @@ This guide walks the migration end-to-end, with two starting points:
 1. **You still have your old mod folder on disk** → start at [Step 1](#step-1-locate-the-old-mod).
 2. **You lost the source but the mod is still on Steam Workshop** → start at [Recovering source from Workshop](#recovering-source-from-workshop), then return to Step 1.
 
-> **The official manual flow below doesn't actually produce a working mod in the current Modkit version.** Several Modkit-side gaps trip migrated mods (the v3 GC wipes assets it doesn't recognise; Save Mod regenerates a blank manifest losing everything). The working recipe — derived empirically across three real mods — is implemented in the wizard at [`scripts/mod_workflow.py`](../../scripts/mod_workflow.py); see [Automating with mod_workflow.py](#automating-with-mod_workflowpy) at the bottom of this guide. The manual steps below are kept as reference for what the official porting guide describes; **don't follow them in isolation, you'll lose your source files**.
+> **The official manual flow below doesn't reliably produce a working mod in the current Modkit version.** Several Modkit-side gaps can trip migrated mods (the cook step doesn't auto-stage the source zip needed for upload; Save Mod can regenerate a blank manifest in some states; the GC may wipe assets it doesn't recognise). The working recipe — derived empirically across multiple real mods — is implemented in the wizard at [`scripts/mod_workflow.py`](../../scripts/mod_workflow.py); see [Automating with mod_workflow.py](#automating-with-mod_workflowpy) at the bottom of this guide. The manual steps below are kept as reference for what the official porting guide describes.
 
 ---
 
@@ -232,37 +232,48 @@ python scripts/mod_workflow.py \
     --author "yourname"
 ```
 
-The wizard auto-detects what state your mod is in (Workshop-cached zip / partial prep / fully prepped / already-modkit-authored) and runs only the steps that are actually needed. It pauses for the steps that have to happen inside the Modkit (Cook, Upload) and verifies the result before moving on.
+The wizard auto-detects what state your mod is in and runs only the steps that are actually needed. It pauses for the steps that have to happen inside the Modkit (Cook, Upload) and verifies the result before moving on.
+
+| Detected state | What the wizard does |
+| --- | --- |
+| `WORKSHOP_CACHED` | v2 manifest + `<id>.zip` in `Saved/Mods/<Mod>/`, no extracted source. Wizard extracts the zip, patches the manifest, builds the v3 mirror. |
+| `SOURCE_AT_SAVED_ROOT` | v2 manifest + source `.uasset` files at `Saved/Mods/<Mod>/<x>.uasset` (alternate-root layout common when source lives in a git repo). Wizard *moves* (not copies) source out of the saved-root into `Content/Mods/<Mod>/`, then mirrors to v3. Empty parent dirs left behind get cleaned up; non-asset files like `.psd`, `README`, `.git/` aren't disturbed. |
+| `PARTIAL_PREPPED` | Earlier wizard run in progress, or some standard-layout files already exist. Wizard refreshes staging from whichever location has the most current bytes. |
+| `RECIPE_PREPPED` | Already prepped, locked, ready for Cook. |
+| `ALREADY_DONE` | Mod was authored fresh in the new Modkit (proper `assetHashes` from the start). Wizard steps aside — use the Modkit's normal Cook + Upload flow. |
 
 ### Why a wizard, why this recipe
 
-Earlier iterations of this guide proposed two simpler scripts (`migrate_mod_v2_to_v3.py` and `recover_mod_from_workshop.py`) that implemented the official porting guide as documented. **Both failed in the current Modkit version**, and the failures took several days to characterise. The wizard exists because the working recipe is genuinely non-obvious and has multiple cooperating constraints. Documenting them here so the constraints are visible:
+Earlier iterations of this guide proposed simpler scripts that implemented the official porting flow as documented. **Both failed in the current Modkit version**, and characterising the failures took several days. The wizard distills the working recipe into a single tool. Documenting the constraints here so they're visible:
 
-1. **The Modkit's GC wipes anything in `Saved/Mods/<Mod>/Assets/` that isn't flagged in the v3 manifest's `assetHashes` field.** Empty `assetHashes` = "no flagged assets" = wipe everything in `Assets/` on load. Manifest version doesn't matter — even a v2 manifest at `Saved/Mods/<Mod>/` won't protect files at the v3 location.
-2. **Save Mod produces a blank v3 manifest from a migrated mod.** It loses `steamId` (resets to 0), empties `assetsToCook` / `createdAssets` / `modifiedAssets` / `referencingAssets`, and leaves `assetHashes` empty. Cook then ships a 238-byte empty `.pak` from the empty manifest, and the Modkit's cleanup pass also wipes `Content/Mods/<Mod>/` because the manifest claims no assets exist there. So **don't click Save Mod** on a migrated mod — it actively destroys state.
-3. **The Modkit's mod-selection screen scans `Saved/Mods/<Mod>/modinfo.json`** — moving the manifest to `Content/Mods/<Mod>/` makes the mod invisible.
-4. **The cook step doesn't auto-stage to `Upload/`.** It produces `Pak/<Mod>.pak` + `.sig` but never builds `Upload/<steamId>.{pak,sig,zip}` for migrated mods, so Upload to Workshop fails with `Source Zip not found!`.
+1. **The cook step doesn't auto-stage to `Upload/`.** It produces `Pak/<Mod>.pak` + `.sig` but never builds `Upload/<steamId>.{pak,sig,zip}` for migrated mods, so Upload to Workshop fails with `Source Zip not found!`. The wizard builds the Upload payload by hand after cook.
 
-The wizard sidesteps every one of these:
+2. **Save Mod *can* destroy migrated state.** When the Modkit's in-memory mod model is empty (because the mod's source was placed by something other than the editor's own asset import), Save Mod regenerates a blank v3 manifest — `steamId` resets to 0, `assetsToCook`/`createdAssets`/etc. become empty, `assetHashes` empty. Cook then ships a 238-byte empty `.pak`, and the cleanup pass wipes `Content/Mods/<Mod>/` because the manifest claims no assets exist there. **Empirically this depends on starting state** — for a mod where the wizard pre-populated all the v3 fields, Save Mod has been observed to make small benign edits (e.g. populate `assetTree`, drop `thumbnailPath`) without the catastrophic blank-regen. Still, the safe default is **don't click Save Mod on a migrated mod** — at minimum back up the manifest first.
 
-- Mirrors source files at **both** `Content/Mods/<Mod>/<files>` AND `Saved/Mods/<Mod>/Assets/Mods/<Mod>/<files>` (Mist game-asset overrides go at both `Content/Mist/<rel>` and `Saved/Mods/<Mod>/Assets/Mist/<rel>`).
-- Patches the v3 manifest with proper `steamId`, `active: true`, populated `assetsToCook` / `createdAssets` / `modifiedAssets` / `referencingAssets`. Other fields (`assetTree`, `assetHashes`, `modHash`) are left for the cooker.
-- Writes `thumbnail.png` at `Saved/Mods/<Mod>/thumbnail.png` from the mod's `mod-image.png`.
-- **`chmod -w` on every file we just wrote.** Read-only blocks the Modkit's destructive overwrite attempts (manifest regen, asset cleanup) silently — without errors that would break the cook.
+3. **The Modkit's GC wipes Saved/Mods/<Mod>/Assets/ files that aren't flagged in `assetHashes`.** Doesn't always trigger — depends on what triggered the load + cleanup pass. Defense-in-depth via `--lock` (read-only protection) is available but optional.
+
+4. **The Modkit's mod-selection screen scans `Saved/Mods/<Mod>/modinfo.json`** — moving the manifest to `Content/Mods/<Mod>/` makes the mod invisible. The wizard always leaves the manifest at the Saved-side.
+
+The wizard sidesteps these:
+
+- Mirrors source files at **both** `Content/Mods/<Mod>/<files>` AND `Saved/Mods/<Mod>/Assets/Mods/<Mod>/<files>` (Mist game-asset overrides go at both `Content/Mist/<rel>` and `Saved/Mods/<Mod>/Assets/Mist/<rel>`). Single source of truth — for `SOURCE_AT_SAVED_ROOT` mods the wizard *moves* rather than copies, so you don't end up with three confused copies of every asset.
+- Patches the v3 manifest with proper `steamId`, `active: true`, populated `assetsToCook` / `createdAssets` / `modifiedAssets` / `referencingAssets`. Preserves `thumbnailPath` (looks at backup zips when the current manifest doesn't carry it). Other fields (`assetTree`, `assetHashes`, `modHash`) are left for the cooker.
+- Writes `thumbnail.png` at `Saved/Mods/<Mod>/thumbnail.png` from the file `thumbnailPath` references (commonly `mod-image.png` but any filename works). The thumbnail source itself stays where it lives — it's not a cook asset and doesn't need to be in `Content/Mods/`.
+- **Optional `--lock`**: `chmod -w` on the patched manifest + source files, so an accidental Save Mod click can't overwrite them. Default is unlocked — empirically Cook reads the manifest cleanly and doesn't overwrite anything *as long as you skip Save Mod*. Use `--lock` as defense-in-depth if you might accidentally click Save Mod.
 - Tells you to **skip Save Mod** and go straight to Cook in the Modkit.
-- Verifies `Pak/<Mod>.pak` looks reasonable (not 238 bytes), then builds `Upload/<steamId>.{pak,sig,zip}` + a manifest copy by hand. The source zip mirrors the original Workshop zip's layout so the upload accepts it as a same-shape replacement.
+- Verifies `Pak/<Mod>.pak` looks reasonable (not 238 bytes), then builds `Upload/<steamId>.{pak,sig,zip}` + a manifest copy by hand. The source zip is built from `Content/Mods/<Mod>/.rglob` so its layout mirrors the original Workshop zip.
 - Tells you to Upload to Workshop in the Modkit.
-- Optionally `chmod +w` everything afterwards so you can edit again.
+- If `--lock` was used, optionally `chmod +w` everything afterwards so you can edit again.
 
 ### What the wizard does NOT cover
 
 - The Modkit-side steps themselves (the wizard pauses and tells you exactly what to click; you do those).
-- A mod that's been freshly authored in the new Modkit (it'll have proper `assetHashes` from the start — the wizard recognises this state as `ALREADY_DONE` and steps aside; you use the Modkit's normal Cook + Upload flow).
+- Mods authored fresh in the new Modkit (they'll have proper `assetHashes` from the start — the wizard recognises this state as `ALREADY_DONE` and steps aside).
 
 ### Two practices the wizard enforces
 
 - **Restart the Modkit between switching between mods.** UE's asset registry caches stale state across runs; ghost entries from the previous mod can leak into the next mod's Content Browser. A clean restart fixes it. (Sometimes you need TWO restarts before the Content Browser is fully clean.)
-- **Before cooking mod X, clean other mods' folders out of `Content/Mods/`** — but only after byte-comparing each to its `Saved/Mods/<other>/Assets/Mods/<other>/` mirror, so we don't lose any uncommitted edits. The wizard does this comparison automatically.
+- **Before cooking mod X, clean other mods' folders out of `Content/Mods/`** — only after byte-comparing each to its `Saved/Mods/<other>/Assets/Mods/<other>/` mirror, so we don't silently lose work. The wizard does this comparison automatically. Folders that don't byte-match (typically because of stray cook artifacts in `Content/Mods/`) trigger a *prompt* showing the actual differing files, with a default-No "force-delete anyway?" question — say yes for cook artifacts, no if you might have unmirrored edits.
 
 ### Recovery if something goes wrong mid-flow
 
@@ -272,7 +283,7 @@ The wizard makes a backup zip at `<modkit>/<Mod>_workflow_backup_<timestamp>.zip
 2. Unzip the backup back into the modkit root (overwriting any wrecked state).
 3. Re-run the wizard — it'll re-diagnose and pick up cleanly.
 
-If your source files have been wiped from disk entirely (e.g., the Modkit's GC fired before the wizard had a chance to lock things), the original Workshop zip at `Saved/Mods/<Mod>/<workshop-id>.zip` is the source of truth — the wizard re-extracts from it automatically when it sees no other source.
+If your source files have been wiped from disk entirely, the original Workshop zip at `Saved/Mods/<Mod>/<workshop-id>.zip` is the source of truth — the wizard re-extracts from it automatically when nothing else is available.
 
 ## Related guides
 
