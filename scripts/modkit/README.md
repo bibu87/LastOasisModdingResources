@@ -26,16 +26,16 @@ Or set it to **Python (REPL)** and paste code interactively.
 
 | Script | Output | What it dumps |
 | --- | --- | --- |
-| [`Python code to extract BPs and functions from the Modkit.py`](Python%20code%20to%20extract%20BPs%20and%20functions%20from%20the%20Modkit.py) | `C:/Temp/LastOasis_APIs.json` | Every Blueprint under `/Game/`, with all CDO-exposed members. |
-| [`Python_Code_export_widget_bps.py`](Python_Code_export_widget_bps.py) | `C:/Temp/widget_bp_functions.txt` | Every `WidgetBlueprint`, with the stock `UserWidget` baseline subtracted. |
-| [`Python_dump_recipes_for_tools.py`](Python_dump_recipes_for_tools.py) | `<ProjectSaved>/RecipeTree.json` | Curated recipe tree grouped by crafting category, designed for the HTML viewers in [`../../tools/`](../../tools/). |
-| [`Python_Extract_Recipes.py`](Python_Extract_Recipes.py) | `<ProjectSaved>/Recipes/recipes.json` | Raw, lower-level CDO dump of every asset under `/Game/Mist/Data/{Items,Crafting,TechTree,Placeables,Walkers,Harvest}`. |
+| [`export_blueprint_api.py`](export_blueprint_api.py) | `C:/Temp/LastOasis_APIs.json` | Every Blueprint under `/Game/`, with all CDO-exposed members. |
+| [`export_widget_blueprints.py`](export_widget_blueprints.py) | `C:/Temp/widget_bp_functions.txt` | Every `WidgetBlueprint`, with the stock `UserWidget` baseline subtracted. |
+| [`dump_recipe_tree.py`](dump_recipe_tree.py) | `<ProjectSaved>/RecipeTree.json` | Curated recipe tree grouped by crafting category, designed for the HTML viewers in [`../../tools/`](../../tools/). |
+| [`dump_recipes_raw.py`](dump_recipes_raw.py) | `<ProjectSaved>/Recipes/recipes.json` | Raw, lower-level CDO dump of every asset under `/Game/Mist/Data/{Items,Crafting,TechTree,Placeables,Walkers,Harvest}`. |
 
 Default output paths are in constants near the top of each file (`save_path`, `OUT`, `OUTPUT_PATH`, `OUTPUT_JSON`) — edit them if you want output elsewhere. Curated outputs from the four scripts live in [`../../data/`](../../data/).
 
 ---
 
-## `Python code to extract BPs and functions from the Modkit.py`
+## `export_blueprint_api.py`
 
 Walks every Blueprint asset under `/Game/`, loads its generated class (`<path>_C`), grabs the **Class Default Object**, and lists each member that survives the `_`/`k2_` filters. The CDO is the only place UE 4.25's Python wrapper materializes most BP members — `dir(cls)` directly is much sparser.
 
@@ -43,7 +43,7 @@ Walks every Blueprint asset under `/Game/`, loads its generated class (`<path>_C
 
 ---
 
-## `Python_Code_export_widget_bps.py`
+## `export_widget_blueprints.py`
 
 Same idea, scoped to `WidgetBlueprint` assets, with `set(dir(unreal.UserWidget))` subtracted as a baseline so you only see widget-specific additions (not the 200+ inherited UMG callables).
 
@@ -51,7 +51,7 @@ Same idea, scoped to `WidgetBlueprint` assets, with `set(dir(unreal.UserWidget))
 
 ---
 
-## `Python_dump_recipes_for_tools.py`
+## `dump_recipe_tree.py`
 
 Opinionated recipe extractor. Knows the Mist schema:
 - Items have `recipes[]` with `category`, `inputs` (`TMap<UClass*, int>`), `required_unlockable`, `experience_reward_crafting`, output `amount`.
@@ -63,7 +63,7 @@ Groups by category, sorts by name, emits both JSON for the [HTML viewers](../../
 
 ---
 
-## `Python_Extract_Recipes.py`
+## `dump_recipes_raw.py`
 
 General-purpose CDO serializer pointed at the Mist data roots — recursively dumps every editor-readable property (scalars, enums, structs, soft-refs, hard-refs, lists, **`unreal.Map`**, **`unreal.Set`**, `unreal.Text`). Use when reverse-engineering a system the curated dumper above hides too much of.
 

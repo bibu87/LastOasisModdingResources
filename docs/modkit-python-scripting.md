@@ -54,7 +54,7 @@ Best for running an existing script file.
 2. Type:
 
    ```
-   py "C:/Users/you/Documents/Development/LastOasisModdingResources/scripts/modkit/Python_dump_recipes_for_tools.py"
+   py "C:/Users/you/Documents/Development/LastOasisModdingResources/scripts/modkit/dump_recipe_tree.py"
    ```
 
    (Note: `py` is the editor command, not the Windows `py.exe` launcher. The path is the absolute on-disk path.)
@@ -77,7 +77,7 @@ Useful if you want to script "pull a fresh recipe dump every Modkit version bump
 
 All four live under [scripts/modkit/](../scripts/modkit/). All four default to writing to `C:/Temp/` or `<ProjectSaved>/`. **Edit the path constants near the top of each script** if you want output elsewhere; the canonical home for finished extracts is the repo's [data/](../data/) folder.
 
-### 3.1 `Python code to extract BPs and functions from the Modkit.py`
+### 3.1 `export_blueprint_api.py`
 
 **Produces:** `C:/Temp/LastOasis_APIs.json` → curated to [data/LastOasis_APIs.json](../data/LastOasis_APIs.json).
 
@@ -91,7 +91,7 @@ All four live under [scripts/modkit/](../scripts/modkit/). All four default to w
 
 **Why CDO inspection?** In 4.25, the Python wrapper around Blueprint classes only reflects members that the engine has materialized for the default object. `dir(cls)` on the class itself is much sparser than `dir(unreal.get_default_object(cls))`. If you swap to inspecting the class directly you'll lose most of the API.
 
-### 3.2 `Python_Code_export_widget_bps.py`
+### 3.2 `export_widget_blueprints.py`
 
 **Produces:** `C:/Temp/widget_bp_functions.txt` → curated to [data/widget_bp_functions.txt](../data/widget_bp_functions.txt).
 
@@ -103,7 +103,7 @@ All four live under [scripts/modkit/](../scripts/modkit/). All four default to w
 - `baseline = set(dir(unreal.UserWidget))` (line 10) — if your widgets inherit from a custom intermediate base in the Mist project, expand the baseline by also subtracting `dir(<that_class>)` so its members get filtered too.
 - Output is plain text grouped by widget package path, two-space-indented function names — designed for `grep`/eyeball use, not JSON processing.
 
-### 3.3 `Python_Extract_Recipes.py` (low-level)
+### 3.3 `dump_recipes_raw.py` (low-level)
 
 **Produces:** `<ProjectSaved>/Recipes/recipes.json` (i.e. `Mist/Saved/Recipes/recipes.json` inside the Modkit install).
 
@@ -128,7 +128,7 @@ For each asset in those roots, it loads the CDO and recursively serializes every
 - `MAX_DEPTH = 8` (line 48) — increase if deeply nested structs get truncated to `"<max-depth>"`; decrease if cycles are blowing up.
 - `SKIP_NAMES` (line 50) — defensive deny-list of properties known to be expensive or recursive (`get_world`, `static_class`, …). Add to it when a new property triggers a 30-second hang.
 
-### 3.4 `Python_dump_recipes_for_tools.py` (curated)
+### 3.4 `dump_recipe_tree.py` (curated)
 
 **Produces:** `<ProjectSaved>/RecipeTree.json` → curated to [data/RecipeTree.json](../data/RecipeTree.json), consumed by [tools/recipe_viewer.html](../tools/recipe_viewer.html) and [tools/recipe_bubbles.html](../tools/recipe_bubbles.html). Also pretty-prints the full tree to the Output Log.
 
@@ -193,7 +193,7 @@ for k, v in inputs.items():
     print(k, v)
 ```
 
-This is exactly what the v9 fix in `Python_Extract_Recipes.py` is about: the older code iterated `unreal.Map` like a list and produced ingredient lists with no quantities. Always check for `unreal.Map` (and `unreal.Set`) **before** falling through to a generic iterable branch in your serializer — the order matters.
+This is exactly what the v9 fix in `dump_recipes_raw.py` is about: the older code iterated `unreal.Map` like a list and produced ingredient lists with no quantities. Always check for `unreal.Map` (and `unreal.Set`) **before** falling through to a generic iterable branch in your serializer — the order matters.
 
 ### 4.4 Asset Registry walks aren't free
 
@@ -322,7 +322,7 @@ What you'll typically swap:
 
 - `ROOT` → another `/Game/Mist/Data/...` subtree, or `/Game/Mods/<YourMod>` to dump just your own content.
 - `PROPS` → field names you've discovered with `dir(cdo)` in the REPL.
-- `to_jsonable` → extend if you start hitting `unreal.Map` / `unreal.Set` / structs (copy the patterns from `Python_Extract_Recipes.py` §3.3).
+- `to_jsonable` → extend if you start hitting `unreal.Map` / `unreal.Set` / structs (copy the patterns from `dump_recipes_raw.py` §3.3).
 
 ---
 

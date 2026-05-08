@@ -6,9 +6,9 @@ Extracted reference data from the Last Oasis Modkit (UE 4.25.4). All files in th
 
 | File | Produced by | Description |
 | --- | --- | --- |
-| [`LastOasis_APIs.json`](LastOasis_APIs.json) | [`Python code to extract BPs and functions from the Modkit.py`](../scripts/modkit/Python%20code%20to%20extract%20BPs%20and%20functions%20from%20the%20Modkit.py) | Every Blueprint under `/Game/`, with all CDO-exposed members per class. Filters out private (`_`) and stock K2 (`k2_`) entries. Searchable Blueprint API surface. |
-| [`widget_bp_functions.txt`](widget_bp_functions.txt) | [`Python_Code_export_widget_bps.py`](../scripts/modkit/Python_Code_export_widget_bps.py) | Every `WidgetBlueprint`, with the stock `unreal.UserWidget` baseline subtracted so only widget-specific additions remain. Plain text, two-space-indented. |
-| [`RecipeTree.json`](RecipeTree.json) | [`Python_dump_recipes_for_tools.py`](../scripts/modkit/Python_dump_recipes_for_tools.py) | Every craftable item & placeable, grouped by crafting category (`Base` = handcraft, `Construction` = build menu, plus stations like `Smithing`, `Furnace`, `PackageCrafting`). Each entry: ingredients (item + amount), output amount, XP reward, required tech-tree unlock. Consumed by the HTML viewers in [`../tools/`](../tools/). |
+| [`LastOasis_APIs.json`](LastOasis_APIs.json) | [`export_blueprint_api.py`](../scripts/modkit/export_blueprint_api.py) | Every Blueprint under `/Game/`, with all CDO-exposed members per class. Filters out private (`_`) and stock K2 (`k2_`) entries. Searchable Blueprint API surface. |
+| [`widget_bp_functions.txt`](widget_bp_functions.txt) | [`export_widget_blueprints.py`](../scripts/modkit/export_widget_blueprints.py) | Every `WidgetBlueprint`, with the stock `unreal.UserWidget` baseline subtracted so only widget-specific additions remain. Plain text, two-space-indented. |
+| [`RecipeTree.json`](RecipeTree.json) | [`dump_recipe_tree.py`](../scripts/modkit/dump_recipe_tree.py) | Every craftable item & placeable, grouped by crafting category (`Base` = handcraft, `Construction` = build menu, plus stations like `Smithing`, `Furnace`, `PackageCrafting`). Each entry: ingredients (item + amount), output amount, XP reward, required tech-tree unlock. Consumed by the HTML viewers in [`../tools/`](../tools/). |
 
 ## Refreshing the data
 

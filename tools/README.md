@@ -20,6 +20,6 @@ Either page expects a sibling `RecipeTree.json`. The simplest way:
 
 ## Refreshing the data
 
-`RecipeTree.json` is produced by [`../scripts/modkit/Python_dump_recipes_for_tools.py`](../scripts/modkit/Python_dump_recipes_for_tools.py) — re-run that inside the Modkit editor after a Modkit update, then drop the new JSON into [`../data/`](../data/).
+`RecipeTree.json` is produced by [`../scripts/modkit/dump_recipe_tree.py`](../scripts/modkit/dump_recipe_tree.py) — re-run that inside the Modkit editor after a Modkit update, then drop the new JSON into [`../data/`](../data/).
 
 See [`../scripts/modkit/README.md`](../scripts/modkit/README.md) for how to run editor-side scripts.
