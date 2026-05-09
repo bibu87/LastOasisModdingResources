@@ -7,10 +7,7 @@ A curated index of resources for modding [Last Oasis](https://store.steampowered
 - **Modkit Download (Free)** — [Last Oasis ModKit on Epic Games Store](https://store.epicgames.com/en-US/p/last-oasis-modkit)
 - **Official Modkit Resources (Google Drive)** — [Modkit assets, samples & docs](https://drive.google.com/drive/folders/1QqS5Z32g07FLpTja2g6oCUJ3YeJnqND1)
 - **Official Discord** — [discord.gg/lastoasis](https://discord.gg/lastoasis) — dedicated channels for ModKit assistance, mod development, and documentation
-- **Modkit Announcement (Steam News)** — [Announcing the Last Oasis Modkit](https://store.steampowered.com/news/app/903950/view/4192362393727227355)
-- **Dev Tracker** — [Modkit announcement on devtrackers.gg](https://devtrackers.gg/last-oasis/p/5481db21-announcing-the-last-oasis-modkit)
 - **MyRealm Portal** — [myrealm.lastoasis.gg](https://myrealm.lastoasis.gg/) — manage custom realms (add `Mods=[id,id,...]` under Realm → Gameplay)
-- **Official Support** — [Last Oasis Zendesk](https://lastoasis.zendesk.com/)
 
 ## Mod Distribution
 
