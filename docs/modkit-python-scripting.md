@@ -44,11 +44,19 @@ Once back up, confirm Python is live:
 
 ### A) Paste into the Output Log REPL
 
-Best for short experiments. Set the dropdown to **Python (REPL)**, paste lines, hit Enter. Multi-line blocks need to be wrapped in `exec(...)` or pasted as a single statement — the REPL doesn't have great multiline editing.
+Best for short experiments. Set the dropdown to **Python** (or **Python (REPL)**), paste lines, hit Enter. Multi-line blocks need to be wrapped in `exec(...)` or pasted as a single statement — the REPL doesn't have great multiline editing.
+
+To run a script file from this mode, `exec` it directly:
+
+```python
+exec(open(r"C:/Users/you/Documents/Development/LastOasisModdingResources/scripts/modkit/dump_recipe_tree.py").read(), {"__name__": "__main__"})
+```
+
+The `{"__name__": "__main__"}` globals dict makes any `if __name__ == "__main__":` blocks fire. Don't pass `encoding="utf-8"` to `open()` — UE 4.25's bundled Python is 2.7 and its `open()` rejects that kwarg (use `io.open()` if you really need it; the scripts in this repo are plain ASCII, so plain `open()` is fine).
 
 ### B) Run a file via the `Cmd` mode
 
-Best for running an existing script file.
+Best for running an existing script file without typing Python.
 
 1. Set the Output Log dropdown to **Cmd**.
 2. Type:
@@ -57,7 +65,7 @@ Best for running an existing script file.
    py "C:/Users/you/Documents/Development/LastOasisModdingResources/scripts/modkit/dump_recipe_tree.py"
    ```
 
-   (Note: `py` is the editor command, not the Windows `py.exe` launcher. The path is the absolute on-disk path.)
+   (Note: `py` is the editor command, not the Windows `py.exe` launcher. The path is the absolute on-disk path. The dropdown **must** be on `Cmd` — pasting `py "..."` while the dropdown is on `Python` parses as Python source and raises `SyntaxError`.)
 
 3. The script runs synchronously; the editor freezes until it's done. Watch the Output Log for progress.
 
@@ -79,7 +87,7 @@ All four live under [scripts/modkit/](../scripts/modkit/). All four default to w
 
 ### 3.1 `export_blueprint_api.py`
 
-**Produces:** `C:/Temp/LastOasis_APIs.json` → curated to [data/LastOasis_APIs.json](../data/LastOasis_APIs.json).
+**Produces:** `C:/Temp/blueprint_api.json` → curated to [data/blueprint_api.json](../data/blueprint_api.json).
 
 **What it does.** Walks every Blueprint asset under `/Game/`, loads its generated class (the class produced when a Blueprint compiles, which carries all the runtime members), grabs the **Class Default Object (CDO)**, runs Python's `dir()` on it, and filters to public / non-`k2_` entries. For each Blueprint you get a list of the functions, properties, events, and delegates the Modkit's reflection layer exposes — the searchable Blueprint API surface.
 
@@ -93,13 +101,13 @@ All four live under [scripts/modkit/](../scripts/modkit/). All four default to w
 
 ### 3.2 `export_widget_blueprints.py`
 
-**Produces:** `C:/Temp/widget_bp_functions.txt` → curated to [data/widget_bp_functions.txt](../data/widget_bp_functions.txt).
+**Produces:** `C:/Temp/widget_bp_functions.json` → curated to [data/widget_bp_functions.json](../data/widget_bp_functions.json). Same shape as `blueprint_api.json` — `{ LeafName: { path, exposed_members } }`.
 
 **What it does.** Same idea as #3.1 but scoped to **`WidgetBlueprint`** assets. Crucially, it **subtracts the `unreal.UserWidget` baseline** — `set(dir(cdo)) - set(dir(unreal.UserWidget))` — so the output only shows widget-specific additions, not the 200+ inherited UMG callables that would drown out signal.
 
 **Knobs to know:**
 
-- `OUT` (line 3) — output path.
+- `OUT` (line 4) — output path.
 - `baseline = set(dir(unreal.UserWidget))` (line 10) — if your widgets inherit from a custom intermediate base in the Mist project, expand the baseline by also subtracting `dir(<that_class>)` so its members get filtered too.
 - Output is plain text grouped by widget package path, two-space-indented function names — designed for `grep`/eyeball use, not JSON processing.
 
@@ -130,7 +138,7 @@ For each asset in those roots, it loads the CDO and recursively serializes every
 
 ### 3.4 `dump_recipe_tree.py` (curated)
 
-**Produces:** `<ProjectSaved>/RecipeTree.json` → curated to [data/RecipeTree.json](../data/RecipeTree.json), consumed by [tools/recipe_viewer.html](../tools/recipe_viewer.html) and [tools/recipe_bubbles.html](../tools/recipe_bubbles.html). Also pretty-prints the full tree to the Output Log.
+**Produces:** `<ProjectSaved>/recipe_tree.json` → curated to [data/recipe_tree.json](../data/recipe_tree.json), consumed by [tools/recipe_viewer.html](../tools/recipe_viewer.html) and [tools/recipe_bubbles.html](../tools/recipe_bubbles.html). Also pretty-prints the full tree to the Output Log.
 
 **What it does.** The opinionated, viewer-ready counterpart to #3.3. Knows the actual recipe schema:
 
@@ -332,14 +340,15 @@ The end of every extractor is a JSON file in `C:/Temp/` or `<ProjectSaved>/`. To
 
 1. **Move it into [data/](../data/)** — that's the canonical location for extracted reference data.
 2. **Update [README.md](../README.md)** with a one-line entry under the *data/* section, including how it was produced (which script, what root).
-3. **If it's recipe-shaped**, the existing [tools/recipe_viewer.html](../tools/recipe_viewer.html) and [tools/recipe_bubbles.html](../tools/recipe_bubbles.html) will load it via the file picker in the header. Both expect a `RecipeTree.json`-shaped object (top-level `groups` keyed by category).
-4. **If it's API/reference-shaped**, the [LLM bundles in llm/](../llm/) can be retrained on the new data — they currently consume `LastOasis_APIs.json` and `widget_bp_functions.txt` as their Blueprint surface.
+3. **If it's recipe-shaped**, the existing [tools/recipe_viewer.html](../tools/recipe_viewer.html) and [tools/recipe_bubbles.html](../tools/recipe_bubbles.html) will load it via the file picker in the header. Both expect a `recipe_tree.json`-shaped object (top-level `groups` keyed by category).
+4. **If it's API/reference-shaped**, the [LLM bundles in llm/](../llm/) can be retrained on the new data — they currently consume `blueprint_api.json` and `widget_bp_functions.json` as their Blueprint surface.
 
 ---
 
 ## 7. Common pitfalls
 
-- **"`py` is not a recognized command."** Output Log mode is set to *Python (REPL)*, not *Cmd*. Switch the dropdown.
+- **"`py` is not a recognized command"** *or* **`SyntaxError: invalid syntax` on `py "..."`.** Output Log mode is set to *Python* / *Python (REPL)*, not *Cmd*. Either switch the dropdown to **Cmd**, or stay in Python mode and use `exec(open(r"...").read(), {"__name__": "__main__"})` instead — see §2.A.
+- **`TypeError: 'encoding' is an invalid keyword argument for this function`.** UE 4.25 ships Python 2.7, where built-in `open()` doesn't take `encoding=`. Either drop the kwarg (the repo's scripts are plain ASCII), or use `io.open(path, encoding="utf-8")`.
 - **Script runs to completion but the JSON is empty.** Almost always one of: walking the wrong root, filtering out everything (`asset_class` strings are case-sensitive in 4.25), or property names that don't match the actual struct field names. Use the REPL to `dir(cdo)` and `safe_get(cdo, "...")` interactively first.
 - **Editor freezes for minutes with no feedback.** No `ScopedSlowTask`. Wrap the loop. If you must abort, the editor process can be killed safely — your script's only side effect is the JSON write at the end.
 - **Recipe ingredients have items but no quantities.** Classic `unreal.Map` keys-only iteration bug. See §4.3.

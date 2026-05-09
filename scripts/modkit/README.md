@@ -26,9 +26,9 @@ Or set it to **Python (REPL)** and paste code interactively.
 
 | Script | Output | What it dumps |
 | --- | --- | --- |
-| [`export_blueprint_api.py`](export_blueprint_api.py) | `C:/Temp/LastOasis_APIs.json` | Every Blueprint under `/Game/`, with all CDO-exposed members. |
-| [`export_widget_blueprints.py`](export_widget_blueprints.py) | `C:/Temp/widget_bp_functions.txt` | Every `WidgetBlueprint`, with the stock `UserWidget` baseline subtracted. |
-| [`dump_recipe_tree.py`](dump_recipe_tree.py) | `<ProjectSaved>/RecipeTree.json` | Curated recipe tree grouped by crafting category, designed for the HTML viewers in [`../../tools/`](../../tools/). |
+| [`export_blueprint_api.py`](export_blueprint_api.py) | `C:/Temp/blueprint_api.json` | Every Blueprint under `/Game/`, with all CDO-exposed members. |
+| [`export_widget_blueprints.py`](export_widget_blueprints.py) | `C:/Temp/widget_bp_functions.json` | Every `WidgetBlueprint`, with the stock `UserWidget` baseline subtracted. Same shape as `blueprint_api.json`. |
+| [`dump_recipe_tree.py`](dump_recipe_tree.py) | `<ProjectSaved>/recipe_tree.json` | Curated recipe tree grouped by crafting category, designed for the HTML viewers in [`../../tools/`](../../tools/). |
 | [`dump_recipes_raw.py`](dump_recipes_raw.py) | `<ProjectSaved>/Recipes/recipes.json` | Raw, lower-level CDO dump of every asset under `/Game/Mist/Data/{Items,Crafting,TechTree,Placeables,Walkers,Harvest}`. |
 
 Default output paths are in constants near the top of each file (`save_path`, `OUT`, `OUTPUT_PATH`, `OUTPUT_JSON`) — edit them if you want output elsewhere. Curated outputs from the four scripts live in [`../../data/`](../../data/).

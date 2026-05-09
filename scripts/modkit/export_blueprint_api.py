@@ -3,7 +3,7 @@ import json
 import os
 
 def get_blueprint_apis():
-    save_path = "C:/Temp/LastOasis_APIs.json"
+    save_path = "C:/Temp/blueprint_api.json"
     if not os.path.exists("C:/Temp"):
         os.makedirs("C:/Temp")
 
@@ -68,7 +68,8 @@ def get_blueprint_apis():
 
     # Final Save
     with open(save_path, "w") as f:
-        json.dump(api_library, f, indent=4)
+        json.dump(api_library, f, indent=2, separators=(",", ": "))
+        f.write("\n")
         
     unreal.log("SUCCESS: Saved {} Blueprints to {}".format(len(api_library), save_path))
 

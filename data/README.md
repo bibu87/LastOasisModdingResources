@@ -4,11 +4,13 @@ Extracted reference data from the Last Oasis Modkit (UE 4.25.4). All files in th
 
 ## Files
 
+All three are JSON, indent=2, snake_case names.
+
 | File | Produced by | Description |
 | --- | --- | --- |
-| [`LastOasis_APIs.json`](LastOasis_APIs.json) | [`export_blueprint_api.py`](../scripts/modkit/export_blueprint_api.py) | Every Blueprint under `/Game/`, with all CDO-exposed members per class. Filters out private (`_`) and stock K2 (`k2_`) entries. Searchable Blueprint API surface. |
-| [`widget_bp_functions.txt`](widget_bp_functions.txt) | [`export_widget_blueprints.py`](../scripts/modkit/export_widget_blueprints.py) | Every `WidgetBlueprint`, with the stock `unreal.UserWidget` baseline subtracted so only widget-specific additions remain. Plain text, two-space-indented. |
-| [`RecipeTree.json`](RecipeTree.json) | [`dump_recipe_tree.py`](../scripts/modkit/dump_recipe_tree.py) | Every craftable item & placeable, grouped by crafting category (`Base` = handcraft, `Construction` = build menu, plus stations like `Smithing`, `Furnace`, `PackageCrafting`). Each entry: ingredients (item + amount), output amount, XP reward, required tech-tree unlock. Consumed by the HTML viewers in [`../tools/`](../tools/). |
+| [`blueprint_api.json`](blueprint_api.json) | [`export_blueprint_api.py`](../scripts/modkit/export_blueprint_api.py) | Every Blueprint under `/Game/`, with all CDO-exposed members per class. Filters out private (`_`) and stock K2 (`k2_`) entries. Searchable Blueprint API surface. Shape: `{ ClassName: { path, exposed_members } }`. |
+| [`widget_bp_functions.json`](widget_bp_functions.json) | [`export_widget_blueprints.py`](../scripts/modkit/export_widget_blueprints.py) | Every `WidgetBlueprint`, with the stock `unreal.UserWidget` baseline subtracted so only widget-specific additions remain. Same shape as `blueprint_api.json`. Leaf-name collisions are keyed by full path. |
+| [`recipe_tree.json`](recipe_tree.json) | [`dump_recipe_tree.py`](../scripts/modkit/dump_recipe_tree.py) | Every craftable item & placeable, grouped by crafting category (`Base` = handcraft, `Construction` = build menu, plus stations like `Smithing`, `Furnace`, `PackageCrafting`). Each entry: ingredients (item + amount), output amount, XP reward, required tech-tree unlock. Consumed by the HTML viewers in [`../tools/`](../tools/). |
 
 ## Refreshing the data
 

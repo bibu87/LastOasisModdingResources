@@ -1,6 +1,6 @@
 # dump_recipes.py
 # Builds a tree of every recipe in the Last Oasis modkit and prints it to the
-# UE 4.25 Output Log.  Also writes the structured tree to Saved/RecipeTree.json.
+# UE 4.25 Output Log.  Also writes the structured tree to Saved/recipe_tree.json.
 #
 # Schema (discovered by probing CDOs):
 #   * Items   (/Game/Mist/Data/Items/...)      have a `recipes` array.
@@ -37,7 +37,7 @@ ITEMS_PATH      = "/Game/Mist/Data/Items"
 PLACEABLES_PATH = "/Game/Mist/Data/Placeables"
 CATEGORY_PATH   = "/Game/Mist/Data/Crafting/Categories"
 
-OUTPUT_JSON = os.path.join(unreal.Paths.project_saved_dir(), "RecipeTree.json")
+OUTPUT_JSON = os.path.join(unreal.Paths.project_saved_dir(), "recipe_tree.json")
 
 # Property names we use, in priority order.
 ITEM_RECIPES_PROPS      = ["recipes"]
@@ -80,10 +80,11 @@ def makedirs_safe(path):
 def write_json(path, obj):
     makedirs_safe(os.path.dirname(path))
     with io.open(path, "w", encoding="utf-8") as fh:
-        data = json.dumps(obj, indent=2, default=str, ensure_ascii=False)
+        data = json.dumps(obj, indent=2, separators=(",", ": "), default=str, ensure_ascii=False)
         if not isinstance(data, type(u"")):
             data = data.decode("utf-8")
         fh.write(data)
+        fh.write(u"\n")
 
 
 def safe_get(obj, name):
