@@ -6,12 +6,15 @@ For editor-side scripts (Python that runs inside the Modkit), see [`modkit/`](mo
 
 For UAsset diagnostic + recovery tools (when the editor's load + re-save cycle damaged assets), see [`uasset/`](uasset/).
 
+For a pre-launch cleanup launcher that resets the Modkit to a pristine state before each editor session (PowerShell + batch wrapper, not Python), see [`modkit-cleanup/`](modkit-cleanup/).
+
 ## At a glance
 
 | Script | Purpose |
 | --- | --- |
 | [`mod_workflow.py`](mod_workflow.py) | Interactive wizard that walks a Last Oasis mod from any starting state through Cook + Upload to Steam Workshop. The canonical migration tool. |
 | [`uasset/`](uasset/) | Toolkit for diagnosing and recovering `.uasset` files damaged by upstream renames or migration. Workshop-pak vs. project triage, header/property dumpers, and a binary patcher for struct renames without CoreRedirects. |
+| [`modkit-cleanup/`](modkit-cleanup/) | Pre-launch cleanup launcher. Resets the Modkit to a pristine state before each editor launch (restores `OriginalAsset/` overrides, clears `Content/Mods/` subfolders, with timestamped backups). Sidesteps the Mod Manager's "leftover assets from previously loaded mod" swap bug. PowerShell + batch, not Python. |
 
 ---
 

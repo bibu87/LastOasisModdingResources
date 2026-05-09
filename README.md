@@ -57,8 +57,9 @@ To host or join a modded server: self-host the dedicated server (Steam app `9207
 ├── docs/             # Guides & reference docs
 ├── llm/              # Drop-in AI assistant prompts
 ├── scripts/          # Host-side Python scripts (migration, Workshop recovery)
-│   ├── modkit/       # Editor-side Python scripts (run inside the UE 4.25 editor)
-│   └── uasset/       # UAsset header/property dumpers + struct-rename patcher
+│   ├── modkit/           # Editor-side Python scripts (run inside the UE 4.25 editor)
+│   ├── modkit-cleanup/   # Pre-launch cleanup launcher (PowerShell + batch)
+│   └── uasset/           # UAsset header/property dumpers + struct-rename patcher
 └── tools/            # Self-contained offline HTML viewers
 ```
 
@@ -71,5 +72,6 @@ Each folder has its own README with details. The summary below is just a pointer
 | [`scripts/`](scripts/) | Interactive wizard ([`mod_workflow.py`](scripts/mod_workflow.py)) that walks a Last Oasis mod from any starting state through Cook + Upload to Steam Workshop. | [`scripts/README.md`](scripts/README.md) |
 | [`scripts/modkit/`](scripts/modkit/) | Editor-side Python that runs inside the Modkit's UE 4.25 editor — walks the Asset Registry to produce the dumps in [`data/`](data/). | [`scripts/modkit/README.md`](scripts/modkit/README.md) |
 | [`scripts/uasset/`](scripts/uasset/) | Diagnostic + recovery tools for `.uasset` files damaged by upstream renames or migration: workshop-pak triage, header/property dumpers, struct-rename binary patcher. | [`scripts/uasset/README.md`](scripts/uasset/README.md) |
+| [`scripts/modkit-cleanup/`](scripts/modkit-cleanup/) | Pre-launch cleanup launcher (PowerShell + batch). Resets the Modkit to a pristine state before each editor launch — sidesteps the Mod Manager's "leftover assets from previously loaded mod" swap bug. Includes timestamped backups. | [`scripts/modkit-cleanup/README.md`](scripts/modkit-cleanup/README.md) |
 | [`tools/`](tools/) | Self-contained offline HTML viewers for the recipe data. Open in any browser, no build step. | [`tools/README.md`](tools/README.md) |
 | [`llm/`](llm/) | Drop-in prompts that pre-load an AI assistant with Modkit knowledge. Claude Skill bundle and a portable system prompt for any other LLM. | [`llm/README.md`](llm/README.md) |
