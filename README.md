@@ -22,14 +22,10 @@ A curated index of resources for modding [Last Oasis](https://store.steampowered
 - [Last Oasis Modkit Guide — How to Download & Basic Tips](https://www.youtube.com/watch?v=ul0IOHPTYxw)
 - [How to Play the Last Oasis Modded Branch](https://www.youtube.com/watch?v=3QYgWBzYzXI) — joining modded servers (predates the change that lifted the `SDKTest` Steam-branch requirement; the default branch is fine now)
 - [Tutorial: How to create a server with mods on Linux](https://m.youtube.com/watch?v=4J5es7emLyc) — server-side mod setup
-- [LAST OASIS — Modkit Announcement](https://www.youtube.com/watch?v=5iAl_bPbu4E)
-- [Last Oasis Isn't Dead Yet — Season 6 and Modkit Announced](https://www.youtube.com/watch?v=54I2IwbrcjM)
-- [Everything on Last Oasis Classic (LOC)](https://www.youtube.com/watch?v=VzUD4T5XmTs)
-- [Last Oasis S6 playlist](https://www.youtube.com/playlist?list=PL8y1rb7wU7yYhcDH2_Fa_ZRazH5MYX4SA)
 
 ## Modded Server Hosting
 
-To host or join a modded server: self-host the dedicated server (Steam app `920720`), drop your Workshop mods under `Mist/Content/Mods/`, and list their IDs in `Mods=` under your realm's Gameplay settings on MyRealm. The default branch supports modded play — no Beta/SDKTest opt-in needed. Full walkthrough — install, launch flags, dependency rules, daily mod-updater scripts — at [docs/modkit-guides/host-a-modded-server.md](docs/modkit-guides/host-a-modded-server.md). MyRealm field-by-field reference at [docs/myrealm-configuration.md](docs/myrealm-configuration.md).
+To host or join a modded server: self-host the dedicated server (Steam app `920720`), drop your Workshop mods under `Mist/Content/Mods/`, and list their IDs in `Mods=` under your realm's Gameplay settings on MyRealm. The default branch supports modded play — no Beta/SDKTest opt-in needed. Full walkthrough — install, launch flags, dependency rules, daily mod-updater scripts — at [docs/modkit-guides/host-a-modded-server.md](docs/modkit-guides/host-a-modded-server.md). MyRealm field-by-field reference at [docs/myrealm-configuration.md](docs/myrealm-configuration.md). Community-collected setup pack (server-manager `.bat`, mod list spreadsheet, fix files, knowledgebase doc) at [Custom Server Tutorial — Google Drive](https://drive.google.com/drive/folders/12XluuJtzn8Fgo3YgX2zfqR35t5dok3NC).
 
 ### Hosting provider guides
 - [GTXGaming — How to install Workshop mods on a Last Oasis server](https://www.gtxgaming.co.uk/clientarea/index.php?rp=/knowledgebase/894/How-to-install-Workshop-mods-on-your-Last-Oasis-dedicated-game-server.html)
