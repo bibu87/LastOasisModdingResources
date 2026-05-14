@@ -99,7 +99,7 @@ echo 903950 > steam_appid.txt
 | Flag | What it does |
 | --- | --- |
 | `-SteamDedicatedServerAppId=903950` | The game's Steam app ID — required for SteamAPI registration. |
-| `-identifier="my server"` | Internal server name; used for log files and as a stable identifier across restarts. |
+| `-identifier="my server"` | Internal identifier used to label the server in MyRealm and in log file names. **Not** what players see in the server browser — the public name comes from MyRealm. |
 | `-port=5911` | UDP game port. Players connect here. |
 | `-QueryPort=5961` | UDP Steam query port. Required for Steam server browser visibility. |
 | `-log` | Open a separate log window (Windows) / write logs to `Saved/Logs/` (both). |
@@ -196,11 +196,9 @@ Two places carry the mod list, and both have to agree:
 
 ### Identifying your server in the browser
 
-There's currently no separate "modded server" tab. Modded and vanilla servers appear in the same list. Convention: **prefix your server name with `[MODDED]`** so players can tell them apart:
+There's currently no separate "modded server" tab. Modded and vanilla servers appear in the same list. Convention: **prefix your public server name with `[MODDED]`** so players can tell them apart.
 
-```
--identifier="[MODDED] my event realm"
-```
+The browser-visible name comes from **MyRealm → Realm → Identity → Realm Name** ([reference](../myrealm-configuration.md#31-identity)), not the launch line. The `-identifier=` flag is just an internal label used in MyRealm's server list and log file names; setting it to `"[MODDED] my event realm"` only helps you find the server in your own admin tooling, it does not change what players see.
 
 ---
 
